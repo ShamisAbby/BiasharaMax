@@ -1,6 +1,7 @@
 import Badge from '@/Components/Badge';
 import Card from '@/Components/Card';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { formatCurrency } from '@/lib/currency';
 import { Subscription, SubscriptionPlan } from '@/types';
 import { Head } from '@inertiajs/react';
 
@@ -40,16 +41,27 @@ export default function SubscriptionShow({
                                             </p>
                                         )}
                                 </div>
-                                <Badge variant={subscription.status === 'trialing' ? 'info' : 'success'}>
+                                <Badge
+                                    variant={
+                                        subscription.status === 'trialing'
+                                            ? 'info'
+                                            : 'success'
+                                    }
+                                >
                                     {subscription.status}
                                 </Badge>
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-500">No active subscription.</p>
+                            <p className="text-sm text-gray-500">
+                                No active subscription.
+                            </p>
                         )}
                     </Card>
 
-                    <Card title="Available plans" description="Upgrades and billing are managed by our team during early access.">
+                    <Card
+                        title="Available plans"
+                        description="Upgrades and billing are managed by our team during early access."
+                    >
                         <div className="grid gap-4 sm:grid-cols-3">
                             {plans.map((plan) => (
                                 <div
@@ -64,7 +76,7 @@ export default function SubscriptionShow({
                                         {plan.name}
                                     </p>
                                     <p className="mt-1 text-lg font-bold text-indigo-600">
-                                        KES {plan.price_monthly}
+                                        TZS {formatCurrency(plan.price_monthly)}
                                         <span className="text-xs font-normal text-gray-500">
                                             {' '}
                                             /mo
@@ -72,7 +84,9 @@ export default function SubscriptionShow({
                                     </p>
                                     <ul className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
                                         {plan.features.map((feature) => (
-                                            <li key={feature}>&bull; {feature}</li>
+                                            <li key={feature}>
+                                                &bull; {feature}
+                                            </li>
                                         ))}
                                     </ul>
                                 </div>

@@ -18,9 +18,9 @@ return new class extends Migration
             $table->string('business_type', 40);
             $table->string('email')->unique();
             $table->string('phone', 32)->nullable();
-            $table->string('country', 2)->default('KE');
-            $table->string('currency', 3)->default('KES');
-            $table->string('timezone', 64)->default('Africa/Nairobi');
+            $table->string('country', 2)->default('TZ');
+            $table->string('currency', 3)->default('TZS');
+            $table->string('timezone', 64)->default('Africa/Dar_es_Salaam');
             $table->string('address')->nullable();
             $table->string('city')->nullable();
             $table->string('logo_path')->nullable();

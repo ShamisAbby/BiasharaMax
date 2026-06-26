@@ -2,6 +2,16 @@
 
 All notable changes to BiasharaOS are documented here, sprint by sprint.
 
+## Unreleased
+
+### Changed
+
+**Locale: Kenya (KES) → Tanzania (TZS)**
+- Default `business.country`/`currency`/`timezone` changed from `KE`/`KES`/`Africa/Nairobi` to `TZ`/`TZS`/`Africa/Dar_es_Salaam` (registration form, business defaults). Businesses can still register with any country/currency — these are just the form's pre-filled defaults.
+- Subscription plan prices rescaled from KES to realistic TZS amounts (~23x): Starter 35,000/90,000/320,000, Growth 80,000/220,000/760,000, Enterprise 170,000/470,000/1,650,000 (monthly/quarterly/yearly). These were KES-denominated numbers that would have been nonsensically low if just relabeled.
+- Added `resources/js/lib/currency.ts` — a shared `formatCurrency()` helper — since the same thousands-separator formatting logic was previously duplicated across the landing page, registration plan picker, and subscription view. All three now import it instead of each defining their own.
+- Landing page hero mockup's illustrative sample figures rescaled to TZS magnitude for consistency (not real data either way — purely a stylized preview).
+
 ## Sprint 2 — Business Configuration (Branches, Warehouses, Employees)
 
 ### Added

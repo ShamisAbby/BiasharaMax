@@ -4,6 +4,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import SelectInput from '@/Components/SelectInput';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
+import { formatCurrency } from '@/lib/currency';
 import { SubscriptionPlan } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
@@ -27,8 +28,8 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
         business_name: '',
         business_type: 'retail',
         business_phone: '',
-        country: 'KE',
-        currency: 'KES',
+        country: 'TZ',
+        currency: 'TZS',
         owner_name: '',
         owner_email: '',
         owner_phone: '',
@@ -65,27 +66,40 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                     </legend>
 
                     <div>
-                        <InputLabel htmlFor="business_name" value="Business name" />
+                        <InputLabel
+                            htmlFor="business_name"
+                            value="Business name"
+                        />
                         <TextInput
                             id="business_name"
                             name="business_name"
                             value={data.business_name}
                             className="mt-1 block w-full"
                             isFocused
-                            onChange={(e) => setData('business_name', e.target.value)}
+                            onChange={(e) =>
+                                setData('business_name', e.target.value)
+                            }
                             required
                         />
-                        <InputError message={errors.business_name} className="mt-2" />
+                        <InputError
+                            message={errors.business_name}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="business_type" value="Business type" />
+                        <InputLabel
+                            htmlFor="business_type"
+                            value="Business type"
+                        />
                         <SelectInput
                             id="business_type"
                             name="business_type"
                             value={data.business_type}
                             className="mt-1 block w-full"
-                            onChange={(e) => setData('business_type', e.target.value)}
+                            onChange={(e) =>
+                                setData('business_type', e.target.value)
+                            }
                             required
                         >
                             {BUSINESS_TYPES.map((type) => (
@@ -94,19 +108,30 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                                 </option>
                             ))}
                         </SelectInput>
-                        <InputError message={errors.business_type} className="mt-2" />
+                        <InputError
+                            message={errors.business_type}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="business_phone" value="Business phone (optional)" />
+                        <InputLabel
+                            htmlFor="business_phone"
+                            value="Business phone (optional)"
+                        />
                         <TextInput
                             id="business_phone"
                             name="business_phone"
                             value={data.business_phone}
                             className="mt-1 block w-full"
-                            onChange={(e) => setData('business_phone', e.target.value)}
+                            onChange={(e) =>
+                                setData('business_phone', e.target.value)
+                            }
                         />
-                        <InputError message={errors.business_phone} className="mt-2" />
+                        <InputError
+                            message={errors.business_phone}
+                            className="mt-2"
+                        />
                     </div>
                 </fieldset>
 
@@ -123,10 +148,15 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                             value={data.owner_name}
                             className="mt-1 block w-full"
                             autoComplete="name"
-                            onChange={(e) => setData('owner_name', e.target.value)}
+                            onChange={(e) =>
+                                setData('owner_name', e.target.value)
+                            }
                             required
                         />
-                        <InputError message={errors.owner_name} className="mt-2" />
+                        <InputError
+                            message={errors.owner_name}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div>
@@ -138,22 +168,35 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                             value={data.owner_email}
                             className="mt-1 block w-full"
                             autoComplete="username"
-                            onChange={(e) => setData('owner_email', e.target.value)}
+                            onChange={(e) =>
+                                setData('owner_email', e.target.value)
+                            }
                             required
                         />
-                        <InputError message={errors.owner_email} className="mt-2" />
+                        <InputError
+                            message={errors.owner_email}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="owner_phone" value="Phone (optional)" />
+                        <InputLabel
+                            htmlFor="owner_phone"
+                            value="Phone (optional)"
+                        />
                         <TextInput
                             id="owner_phone"
                             name="owner_phone"
                             value={data.owner_phone}
                             className="mt-1 block w-full"
-                            onChange={(e) => setData('owner_phone', e.target.value)}
+                            onChange={(e) =>
+                                setData('owner_phone', e.target.value)
+                            }
                         />
-                        <InputError message={errors.owner_phone} className="mt-2" />
+                        <InputError
+                            message={errors.owner_phone}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div>
@@ -165,14 +208,22 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                             value={data.password}
                             className="mt-1 block w-full"
                             autoComplete="new-password"
-                            onChange={(e) => setData('password', e.target.value)}
+                            onChange={(e) =>
+                                setData('password', e.target.value)
+                            }
                             required
                         />
-                        <InputError message={errors.password} className="mt-2" />
+                        <InputError
+                            message={errors.password}
+                            className="mt-2"
+                        />
                     </div>
 
                     <div>
-                        <InputLabel htmlFor="password_confirmation" value="Confirm password" />
+                        <InputLabel
+                            htmlFor="password_confirmation"
+                            value="Confirm password"
+                        />
                         <TextInput
                             id="password_confirmation"
                             type="password"
@@ -180,10 +231,15 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                             value={data.password_confirmation}
                             className="mt-1 block w-full"
                             autoComplete="new-password"
-                            onChange={(e) => setData('password_confirmation', e.target.value)}
+                            onChange={(e) =>
+                                setData('password_confirmation', e.target.value)
+                            }
                             required
                         />
-                        <InputError message={errors.password_confirmation} className="mt-2" />
+                        <InputError
+                            message={errors.password_confirmation}
+                            className="mt-2"
+                        />
                     </div>
                 </fieldset>
 
@@ -206,7 +262,9 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                                     type="radio"
                                     name="subscription_plan_id"
                                     value={plan.id}
-                                    checked={data.subscription_plan_id === plan.id}
+                                    checked={
+                                        data.subscription_plan_id === plan.id
+                                    }
                                     onChange={() =>
                                         setData('subscription_plan_id', plan.id)
                                     }
@@ -216,7 +274,7 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                                     {plan.name}
                                 </div>
                                 <div className="mt-1 text-lg font-bold text-indigo-600">
-                                    KES {plan.price_monthly}
+                                    TZS {formatCurrency(plan.price_monthly)}
                                     <span className="text-xs font-normal text-gray-500">
                                         {' '}
                                         /mo
@@ -228,7 +286,10 @@ export default function Register({ plans }: { plans: SubscriptionPlan[] }) {
                             </label>
                         ))}
                     </div>
-                    <InputError message={errors.subscription_plan_id} className="mt-2" />
+                    <InputError
+                        message={errors.subscription_plan_id}
+                        className="mt-2"
+                    />
                 </fieldset>
 
                 <div className="flex items-center justify-end">
