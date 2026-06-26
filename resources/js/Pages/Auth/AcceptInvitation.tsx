@@ -55,21 +55,31 @@ export default function AcceptInvitation({
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="password_confirmation" value="Confirm password" />
+                    <InputLabel
+                        htmlFor="password_confirmation"
+                        value="Confirm password"
+                    />
                     <TextInput
                         id="password_confirmation"
                         type="password"
                         className="mt-1 block w-full"
                         value={data.password_confirmation}
                         autoComplete="new-password"
-                        onChange={(e) => setData('password_confirmation', e.target.value)}
+                        onChange={(e) =>
+                            setData('password_confirmation', e.target.value)
+                        }
                         required
                     />
-                    <InputError message={errors.password_confirmation} className="mt-2" />
+                    <InputError
+                        message={errors.password_confirmation}
+                        className="mt-2"
+                    />
                 </div>
 
                 <div className="flex justify-end">
-                    <PrimaryButton disabled={processing}>Activate account</PrimaryButton>
+                    <PrimaryButton disabled={processing}>
+                        Activate account
+                    </PrimaryButton>
                 </div>
             </form>
         </GuestLayout>

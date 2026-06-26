@@ -27,13 +27,24 @@ export default function Dashboard({
 
             <div className="space-y-6 py-12">
                 <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    {business?.status === 'trial' && trialDaysRemaining !== null && (
-                        <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-200">
-                            You're on a free trial &mdash;{' '}
-                            <strong>{trialDaysRemaining} day{trialDaysRemaining === 1 ? '' : 's'}</strong>{' '}
-                            remaining. <Link href={route('settings.subscription.show')} className="underline">View plans</Link>.
-                        </div>
-                    )}
+                    {business?.status === 'trial' &&
+                        trialDaysRemaining !== null && (
+                            <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-200">
+                                You're on a free trial &mdash;{' '}
+                                <strong>
+                                    {trialDaysRemaining} day
+                                    {trialDaysRemaining === 1 ? '' : 's'}
+                                </strong>{' '}
+                                remaining.{' '}
+                                <Link
+                                    href={route('settings.subscription.show')}
+                                    className="underline"
+                                >
+                                    View plans
+                                </Link>
+                                .
+                            </div>
+                        )}
 
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                         <Card title="Business">
@@ -46,7 +57,13 @@ export default function Dashboard({
                         </Card>
 
                         <Card title="Subscription">
-                            <Badge variant={subscription?.status === 'trialing' ? 'info' : 'success'}>
+                            <Badge
+                                variant={
+                                    subscription?.status === 'trialing'
+                                        ? 'info'
+                                        : 'success'
+                                }
+                            >
                                 {subscription?.status ?? 'none'}
                             </Badge>
                             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">

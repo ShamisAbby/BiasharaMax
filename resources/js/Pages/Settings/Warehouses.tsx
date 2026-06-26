@@ -79,7 +79,9 @@ function WarehouseForm({
                     id="warehouse_code"
                     className="mt-1 block w-full uppercase"
                     value={data.code}
-                    onChange={(e) => setData('code', e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                        setData('code', e.target.value.toUpperCase())
+                    }
                     required
                     disabled={warehouse?.is_default}
                 />
@@ -112,7 +114,9 @@ export default function Warehouses({
     warehouses: Warehouse[];
     branches: Branch[];
 }) {
-    const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
+    const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(
+        null,
+    );
     const [creating, setCreating] = useState(false);
 
     const deleteWarehouse = (warehouse: Warehouse) => {
@@ -137,7 +141,10 @@ export default function Warehouses({
                         title="Warehouses"
                         description="Where stock is held within each branch."
                         actions={
-                            <PrimaryButton onClick={() => setCreating(true)} disabled={branches.length === 0}>
+                            <PrimaryButton
+                                onClick={() => setCreating(true)}
+                                disabled={branches.length === 0}
+                            >
                                 New warehouse
                             </PrimaryButton>
                         }
@@ -153,12 +160,19 @@ export default function Warehouses({
                                             <p className="font-medium text-gray-900 dark:text-gray-100">
                                                 {warehouse.name}
                                             </p>
-                                            <Badge variant="neutral">{warehouse.code}</Badge>
+                                            <Badge variant="neutral">
+                                                {warehouse.code}
+                                            </Badge>
                                             {warehouse.is_default && (
-                                                <Badge variant="info">Default</Badge>
+                                                <Badge variant="info">
+                                                    Default
+                                                </Badge>
                                             )}
-                                            {warehouse.status === 'inactive' && (
-                                                <Badge variant="warning">Inactive</Badge>
+                                            {warehouse.status ===
+                                                'inactive' && (
+                                                <Badge variant="warning">
+                                                    Inactive
+                                                </Badge>
                                             )}
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -166,11 +180,19 @@ export default function Warehouses({
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <SecondaryButton onClick={() => setEditingWarehouse(warehouse)}>
+                                        <SecondaryButton
+                                            onClick={() =>
+                                                setEditingWarehouse(warehouse)
+                                            }
+                                        >
                                             Edit
                                         </SecondaryButton>
                                         {!warehouse.is_default && (
-                                            <DangerButton onClick={() => deleteWarehouse(warehouse)}>
+                                            <DangerButton
+                                                onClick={() =>
+                                                    deleteWarehouse(warehouse)
+                                                }
+                                            >
                                                 Delete
                                             </DangerButton>
                                         )}
@@ -182,18 +204,29 @@ export default function Warehouses({
                 </div>
             </div>
 
-            <Modal show={creating} onClose={() => setCreating(false)} maxWidth="lg">
+            <Modal
+                show={creating}
+                onClose={() => setCreating(false)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         New warehouse
                     </h2>
                     <div className="mt-4">
-                        <WarehouseForm branches={branches} onSaved={() => setCreating(false)} />
+                        <WarehouseForm
+                            branches={branches}
+                            onSaved={() => setCreating(false)}
+                        />
                     </div>
                 </div>
             </Modal>
 
-            <Modal show={editingWarehouse !== null} onClose={() => setEditingWarehouse(null)} maxWidth="lg">
+            <Modal
+                show={editingWarehouse !== null}
+                onClose={() => setEditingWarehouse(null)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Edit warehouse

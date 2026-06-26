@@ -1,7 +1,11 @@
 import { forwardRef, SelectHTMLAttributes } from 'react';
 
 export default forwardRef(function SelectInput(
-    { className = '', children, ...props }: SelectHTMLAttributes<HTMLSelectElement>,
+    {
+        className = '',
+        children,
+        ...props
+    }: SelectHTMLAttributes<HTMLSelectElement>,
     ref: React.Ref<HTMLSelectElement>,
 ) {
     return (

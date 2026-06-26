@@ -66,7 +66,10 @@ function RoleForm({
             </div>
 
             <div>
-                <InputLabel htmlFor="role_description" value="Description (optional)" />
+                <InputLabel
+                    htmlFor="role_description"
+                    value="Description (optional)"
+                />
                 <TextInput
                     id="role_description"
                     className="mt-1 block w-full"
@@ -78,29 +81,37 @@ function RoleForm({
             <div>
                 <InputLabel value="Permissions" />
                 <div className="mt-2 max-h-72 space-y-4 overflow-y-auto rounded-md border border-gray-200 p-4 dark:border-gray-700">
-                    {Object.entries(groupedPermissions).map(([module, permissions]) => (
-                        <div key={module}>
-                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                                {module}
-                            </p>
-                            <div className="mt-1 space-y-1">
-                                {permissions.map((permission) => (
-                                    <label
-                                        key={permission.id}
-                                        className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                            checked={data.permissions.includes(permission.id)}
-                                            onChange={() => togglePermission(permission.id)}
-                                        />
-                                        {permission.name}
-                                    </label>
-                                ))}
+                    {Object.entries(groupedPermissions).map(
+                        ([module, permissions]) => (
+                            <div key={module}>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                                    {module}
+                                </p>
+                                <div className="mt-1 space-y-1">
+                                    {permissions.map((permission) => (
+                                        <label
+                                            key={permission.id}
+                                            className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                checked={data.permissions.includes(
+                                                    permission.id,
+                                                )}
+                                                onChange={() =>
+                                                    togglePermission(
+                                                        permission.id,
+                                                    )
+                                                }
+                                            />
+                                            {permission.name}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ),
+                    )}
                 </div>
             </div>
 
@@ -162,21 +173,31 @@ export default function Roles({
                                                 {role.name}
                                             </p>
                                             {role.is_system && (
-                                                <Badge variant="info">System</Badge>
+                                                <Badge variant="info">
+                                                    System
+                                                </Badge>
                                             )}
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">
                                             {role.users_count ?? 0} member
-                                            {role.users_count === 1 ? '' : 's'} &middot;{' '}
-                                            {role.permissions?.length ?? 0} permissions
+                                            {role.users_count === 1
+                                                ? ''
+                                                : 's'}{' '}
+                                            &middot;{' '}
+                                            {role.permissions?.length ?? 0}{' '}
+                                            permissions
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <SecondaryButton onClick={() => setEditingRole(role)}>
+                                        <SecondaryButton
+                                            onClick={() => setEditingRole(role)}
+                                        >
                                             Edit
                                         </SecondaryButton>
                                         {!role.is_system && (
-                                            <DangerButton onClick={() => deleteRole(role)}>
+                                            <DangerButton
+                                                onClick={() => deleteRole(role)}
+                                            >
                                                 Delete
                                             </DangerButton>
                                         )}
@@ -188,7 +209,11 @@ export default function Roles({
                 </div>
             </div>
 
-            <Modal show={creating} onClose={() => setCreating(false)} maxWidth="lg">
+            <Modal
+                show={creating}
+                onClose={() => setCreating(false)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         New role
@@ -202,7 +227,11 @@ export default function Roles({
                 </div>
             </Modal>
 
-            <Modal show={editingRole !== null} onClose={() => setEditingRole(null)} maxWidth="lg">
+            <Modal
+                show={editingRole !== null}
+                onClose={() => setEditingRole(null)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Edit role

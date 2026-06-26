@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HomeController;
 use App\Modules\Authentication\Http\Controllers\AcceptInvitationController;
 use App\Modules\Authentication\Http\Controllers\ProfileController;
 use App\Modules\Business\Http\Controllers\BranchController;
@@ -9,18 +10,9 @@ use App\Modules\Business\Http\Controllers\EmployeeController;
 use App\Modules\Business\Http\Controllers\WarehouseController;
 use App\Modules\RBAC\Http\Controllers\RoleController;
 use App\Modules\Subscription\Http\Controllers\SubscriptionController;
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+Route::get('/', HomeController::class)->name('home');
 
 Route::middleware('signed')->group(function () {
     Route::get('/employee-invitations/{user}', [AcceptInvitationController::class, 'show'])

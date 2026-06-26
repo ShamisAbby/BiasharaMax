@@ -59,7 +59,9 @@ function BranchForm({
                     id="branch_code"
                     className="mt-1 block w-full uppercase"
                     value={data.code}
-                    onChange={(e) => setData('code', e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                        setData('code', e.target.value.toUpperCase())
+                    }
                     required
                     disabled={branch?.is_main}
                 />
@@ -148,27 +150,48 @@ export default function Branches({ branches }: { branches: Branch[] }) {
                                             <p className="font-medium text-gray-900 dark:text-gray-100">
                                                 {branch.name}
                                             </p>
-                                            <Badge variant="neutral">{branch.code}</Badge>
+                                            <Badge variant="neutral">
+                                                {branch.code}
+                                            </Badge>
                                             {branch.is_main && (
-                                                <Badge variant="info">Main</Badge>
+                                                <Badge variant="info">
+                                                    Main
+                                                </Badge>
                                             )}
                                             {branch.status === 'inactive' && (
-                                                <Badge variant="warning">Inactive</Badge>
+                                                <Badge variant="warning">
+                                                    Inactive
+                                                </Badge>
                                             )}
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {branch.warehouses_count ?? 0} warehouse
-                                            {branch.warehouses_count === 1 ? '' : 's'} &middot;{' '}
-                                            {branch.employees_count ?? 0} employee
-                                            {branch.employees_count === 1 ? '' : 's'}
+                                            {branch.warehouses_count ?? 0}{' '}
+                                            warehouse
+                                            {branch.warehouses_count === 1
+                                                ? ''
+                                                : 's'}{' '}
+                                            &middot;{' '}
+                                            {branch.employees_count ?? 0}{' '}
+                                            employee
+                                            {branch.employees_count === 1
+                                                ? ''
+                                                : 's'}
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <SecondaryButton onClick={() => setEditingBranch(branch)}>
+                                        <SecondaryButton
+                                            onClick={() =>
+                                                setEditingBranch(branch)
+                                            }
+                                        >
                                             Edit
                                         </SecondaryButton>
                                         {!branch.is_main && (
-                                            <DangerButton onClick={() => deleteBranch(branch)}>
+                                            <DangerButton
+                                                onClick={() =>
+                                                    deleteBranch(branch)
+                                                }
+                                            >
                                                 Delete
                                             </DangerButton>
                                         )}
@@ -180,7 +203,11 @@ export default function Branches({ branches }: { branches: Branch[] }) {
                 </div>
             </div>
 
-            <Modal show={creating} onClose={() => setCreating(false)} maxWidth="lg">
+            <Modal
+                show={creating}
+                onClose={() => setCreating(false)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         New branch
@@ -191,7 +218,11 @@ export default function Branches({ branches }: { branches: Branch[] }) {
                 </div>
             </Modal>
 
-            <Modal show={editingBranch !== null} onClose={() => setEditingBranch(null)} maxWidth="lg">
+            <Modal
+                show={editingBranch !== null}
+                onClose={() => setEditingBranch(null)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Edit branch

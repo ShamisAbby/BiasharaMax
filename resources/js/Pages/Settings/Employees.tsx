@@ -85,7 +85,10 @@ function InviteForm({
             </div>
 
             <div>
-                <InputLabel htmlFor="employee_branch" value="Branch (optional)" />
+                <InputLabel
+                    htmlFor="employee_branch"
+                    value="Branch (optional)"
+                />
                 <SelectInput
                     id="employee_branch"
                     className="mt-1 block w-full"
@@ -102,7 +105,9 @@ function InviteForm({
             </div>
 
             <div className="flex justify-end">
-                <PrimaryButton disabled={processing}>Send invitation</PrimaryButton>
+                <PrimaryButton disabled={processing}>
+                    Send invitation
+                </PrimaryButton>
             </div>
         </form>
     );
@@ -128,7 +133,9 @@ function EditEmployeeForm({
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        patch(route('settings.employees.update', employee.id), { onSuccess: onSaved });
+        patch(route('settings.employees.update', employee.id), {
+            onSuccess: onSaved,
+        });
     };
 
     return (
@@ -187,7 +194,10 @@ function EditEmployeeForm({
                     className="mt-1 block w-full"
                     value={data.status}
                     onChange={(e) =>
-                        setData('status', e.target.value as 'active' | 'suspended')
+                        setData(
+                            'status',
+                            e.target.value as 'active' | 'suspended',
+                        )
                     }
                 >
                     <option value="active">Active</option>
@@ -196,7 +206,9 @@ function EditEmployeeForm({
             </div>
 
             <div className="flex justify-end">
-                <PrimaryButton disabled={processing}>Save changes</PrimaryButton>
+                <PrimaryButton disabled={processing}>
+                    Save changes
+                </PrimaryButton>
             </div>
         </form>
     );
@@ -212,7 +224,9 @@ export default function Employees({
     branches: Branch[];
 }) {
     const [inviting, setInviting] = useState(false);
-    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+    const [editingEmployee, setEditingEmployee] = useState<Employee | null>(
+        null,
+    );
 
     const removeEmployee = (employee: Employee) => {
         if (confirm(`Remove ${employee.name} from this business?`)) {
@@ -253,26 +267,43 @@ export default function Employees({
                                                 {employee.name}
                                             </p>
                                             {employee.is_owner && (
-                                                <Badge variant="info">Owner</Badge>
+                                                <Badge variant="info">
+                                                    Owner
+                                                </Badge>
                                             )}
                                             {employee.status === 'invited' && (
-                                                <Badge variant="warning">Invited</Badge>
+                                                <Badge variant="warning">
+                                                    Invited
+                                                </Badge>
                                             )}
-                                            {employee.status === 'suspended' && (
-                                                <Badge variant="danger">Suspended</Badge>
+                                            {employee.status ===
+                                                'suspended' && (
+                                                <Badge variant="danger">
+                                                    Suspended
+                                                </Badge>
                                             )}
                                         </div>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {employee.email} &middot; {employee.role?.name ?? 'No role'}
-                                            {employee.branch && ` · ${employee.branch.name}`}
+                                            {employee.email} &middot;{' '}
+                                            {employee.role?.name ?? 'No role'}
+                                            {employee.branch &&
+                                                ` · ${employee.branch.name}`}
                                         </p>
                                     </div>
                                     <div className="flex gap-2">
-                                        <SecondaryButton onClick={() => setEditingEmployee(employee)}>
+                                        <SecondaryButton
+                                            onClick={() =>
+                                                setEditingEmployee(employee)
+                                            }
+                                        >
                                             Edit
                                         </SecondaryButton>
                                         {!employee.is_owner && (
-                                            <DangerButton onClick={() => removeEmployee(employee)}>
+                                            <DangerButton
+                                                onClick={() =>
+                                                    removeEmployee(employee)
+                                                }
+                                            >
                                                 Remove
                                             </DangerButton>
                                         )}
@@ -284,7 +315,11 @@ export default function Employees({
                 </div>
             </div>
 
-            <Modal show={inviting} onClose={() => setInviting(false)} maxWidth="lg">
+            <Modal
+                show={inviting}
+                onClose={() => setInviting(false)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Invite employee
@@ -299,7 +334,11 @@ export default function Employees({
                 </div>
             </Modal>
 
-            <Modal show={editingEmployee !== null} onClose={() => setEditingEmployee(null)} maxWidth="lg">
+            <Modal
+                show={editingEmployee !== null}
+                onClose={() => setEditingEmployee(null)}
+                maxWidth="lg"
+            >
                 <div className="p-6">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                         Edit employee
