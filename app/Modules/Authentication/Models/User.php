@@ -2,6 +2,7 @@
 
 namespace App\Modules\Authentication\Models;
 
+use App\Modules\Business\Models\Branch;
 use App\Modules\Business\Models\Business;
 use App\Modules\RBAC\Models\Role;
 use App\Modules\Shared\Concerns\Auditable;
@@ -21,9 +22,16 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use Auditable, HasApiTokens, HasFactory, HasUserstamps, HasUuids, Notifiable, SoftDeletes;
 
+    public const STATUS_INVITED = 'invited';
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_SUSPENDED = 'suspended';
+
     protected $fillable = [
         'business_id',
         'role_id',
+        'branch_id',
         'invited_by',
         'name',
         'email',
@@ -54,6 +62,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function isOwnerOf(Business $business): bool

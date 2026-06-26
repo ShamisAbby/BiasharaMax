@@ -24,6 +24,7 @@ class BusinessRegistrationService
     public function __construct(
         private readonly RoleProvisioningService $roleProvisioningService,
         private readonly SubscriptionService $subscriptionService,
+        private readonly BranchProvisioningService $branchProvisioningService,
     ) {}
 
     /**
@@ -65,12 +66,14 @@ class BusinessRegistrationService
                 'updated_by' => $owner->getKey(),
             ]);
 
-            $roles = $this->roleProvisioningService->provisionDefaultRoles($business);
+            $this->roleProvisioningService->provisionDefaultRoles($business);
             $ownerRole = $this->roleProvisioningService->ownerRoleFor($business);
+            $mainBranch = $this->branchProvisioningService->provisionMainBranch($business);
 
             $owner->forceFill([
                 'business_id' => $business->getKey(),
                 'role_id' => $ownerRole->getKey(),
+                'branch_id' => $mainBranch->getKey(),
             ])->save();
 
             $plan = SubscriptionPlan::query()->findOrFail($data['subscription_plan_id']);

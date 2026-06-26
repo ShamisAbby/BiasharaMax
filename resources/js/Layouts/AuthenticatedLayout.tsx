@@ -8,6 +8,9 @@ import { PropsWithChildren, ReactNode, useState } from 'react';
 const NAV_ITEMS = [
     { name: 'dashboard', label: 'Dashboard' },
     { name: 'settings.business.edit', label: 'Business' },
+    { name: 'settings.branches.index', label: 'Branches' },
+    { name: 'settings.warehouses.index', label: 'Warehouses' },
+    { name: 'settings.employees.index', label: 'Employees' },
     { name: 'settings.roles.index', label: 'Roles & Permissions' },
     { name: 'settings.subscription.show', label: 'Subscription' },
 ];

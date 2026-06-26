@@ -66,6 +66,18 @@ export default function Dashboard({
                         <Card title="Quick actions">
                             <div className="flex flex-col gap-2 text-sm">
                                 <Link
+                                    href={route('settings.employees.index')}
+                                    className="text-indigo-600 hover:underline"
+                                >
+                                    Invite an employee
+                                </Link>
+                                <Link
+                                    href={route('settings.branches.index')}
+                                    className="text-indigo-600 hover:underline"
+                                >
+                                    Manage Branches
+                                </Link>
+                                <Link
                                     href={route('settings.roles.index')}
                                     className="text-indigo-600 hover:underline"
                                 >

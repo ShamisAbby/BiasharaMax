@@ -2,6 +2,33 @@
 
 All notable changes to BiasharaOS are documented here, sprint by sprint.
 
+## Sprint 2 — Business Configuration (Branches, Warehouses, Employees)
+
+### Added
+
+**Branches & Warehouses**
+- Every business is provisioned with a "Main Branch" and "Main Warehouse" automatically at registration time, in the same atomic transaction as the rest of the registration flow — a business is never left without a location to attach stock to once Inventory ships.
+- Full Branch CRUD, gated by the `branches.*` permission set. The main branch can never be deleted; a branch with warehouses or employees still attached cannot be deleted until those are moved or removed first (soft deletes don't cascade, so this guard exists specifically to prevent orphaned warehouse/employee records).
+- Full Warehouse CRUD, gated by `warehouses.*`. Each warehouse belongs to exactly one branch (validated server-side to be in the same business — a warehouse cannot be attached to another tenant's branch). The default warehouse for a branch cannot be deleted directly.
+
+**Employees**
+- Owners/Managers can invite employees by email, assigning a role and (optionally) a branch. The employee record is created immediately with `status: invited` and an unusable random password — **a real password is never emailed**. A 7-day signed, temporary URL (`employee-invitations.accept`) is sent via `EmployeeInvitedNotification`; visiting it lets the invitee set their own password and activates the account.
+- The business owner's role/status can't be changed through the employee-management screen — ownership transfer is a separate, deliberate action, not an accidental side effect of an employee edit form.
+- `users.branch_id` added (nullable) so employees can be scoped to the branch they work at; the owner oversees the whole business and is not pinned to one branch by default.
+
+**Permissions**
+- Added `branches.*` and `warehouses.*` permissions. Manager and Inventory Officer default roles were granted `*.view` on both by default.
+- **Owner-role auto-sync:** the Business Owner role is "full access" by definition, not a per-business customization. `PermissionSeeder` now re-syncs every existing business's Owner role with *all* permissions every time it runs, so a business doesn't lose access to a new module's permissions just because it registered before that module shipped. Other system roles (Manager, Cashier, ...) are deliberately left alone, since their permissions may already have been customized by the business owner.
+
+### Testing
+
+12 new tests covering: main branch/warehouse auto-provisioning, branch CRUD and deletion guards (main branch, non-empty branch), warehouse CRUD and deletion guards (default warehouse), cross-tenant branch validation on warehouse creation, employee invitation + notification dispatch, invitation acceptance (password set, status transition, auto-login), and the owner-role-immutable-via-employee-edit guard. 49 tests total, all green.
+
+### Known follow-ups
+
+- No "resend invitation" or "revoke invitation" action yet — if an invite expires or is lost, the owner currently has to delete and re-invite.
+- Branch/warehouse reassignment when deleting (e.g. "move these warehouses to branch X before deleting") is manual; no bulk-move action yet.
+
 ## Sprint 1 — Authentication, Business Registration, Trial, Subscriptions, Roles & Permissions, Dashboard, Settings
 
 ### Added

@@ -30,12 +30,16 @@ class RoleProvisioningService
             'employees.update',
             'roles.view',
             'subscription.view',
+            'branches.view',
+            'warehouses.view',
         ],
         Role::CASHIER => [
             'dashboard.view',
         ],
         Role::INVENTORY_OFFICER => [
             'dashboard.view',
+            'branches.view',
+            'warehouses.view',
         ],
         Role::ACCOUNTANT => [
             'dashboard.view',

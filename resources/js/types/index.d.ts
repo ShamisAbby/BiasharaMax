@@ -66,6 +66,43 @@ export interface User {
     role_id?: string | null;
 }
 
+export interface Branch {
+    id: string;
+    name: string;
+    code: string;
+    is_main: boolean;
+    phone: string | null;
+    address: string | null;
+    city: string | null;
+    status: 'active' | 'inactive';
+    warehouses_count?: number;
+    employees_count?: number;
+}
+
+export interface Warehouse {
+    id: string;
+    branch_id: string;
+    branch_name?: string;
+    name: string;
+    code: string;
+    is_default: boolean;
+    address: string | null;
+    status: 'active' | 'inactive';
+}
+
+export interface Employee {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    status: 'invited' | 'active' | 'suspended';
+    role: { id: string; name: string } | null;
+    branch: { id: string; name: string } | null;
+    is_owner: boolean;
+    last_login_at: string | null;
+    created_at: string;
+}
+
 export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {

@@ -22,8 +22,8 @@ The application is organized by business domain rather than technical layer:
 
 ```
 app/Modules/
-  Authentication/   Login, registration support, profile self-service
-  Business/          Business registration, settings, tenant model
+  Authentication/   Login, registration support, profile self-service, employee invitation acceptance
+  Business/          Business registration, settings, branches, warehouses, employees, tenant model
   RBAC/               Roles & permissions
   Subscription/      Plans, trials, subscription status
   Shared/             Cross-cutting concerns: audit logging, tenant scoping, userstamps
