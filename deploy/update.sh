@@ -18,15 +18,62 @@ cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 APP="$ROOT/backend"
 
-PHP_BIN="${PHP_BIN:-$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php)}"
+# ---------------------------------------------------------------------
+# PHP. Same selection as setup.sh, and it has to be — this script was
+# written with `command -v php8.4`, which finds nothing on this host
+# because the versioned binaries live at /opt/alt/php84/usr/bin/php and
+# are not on PATH. It fell through to bare `php`, the system 8.2 build,
+# and composer then refused the install against a lock file requiring
+# >= 8.4.1. Setup got fixed and this did not, so the first deploy after
+# the fix would have failed in exactly the way the fix was for.
+#
+# Extensions are verified, not assumed: this server's 8.5 CLI is missing
+# intl, zip and gd, so it is a worse choice than 8.4 despite the higher
+# number.
+# ---------------------------------------------------------------------
+PHP_BIN="${PHP_BIN:-}"
+
+if [ -z "$PHP_BIN" ]; then
+    for candidate in /opt/alt/php84/usr/bin/php /usr/bin/php8.4 /opt/alt/php85/usr/bin/php /usr/bin/php8.5 /opt/alt/php83/usr/bin/php /usr/bin/php8.3 /opt/alt/php82/usr/bin/php /usr/bin/php8.2 php; do
+        command -v "$candidate" >/dev/null 2>&1 || continue
+
+        version="$("$candidate" -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;' 2>/dev/null || echo 0)"
+        [ "$(printf '%s\n8.2\n' "$version" | sort -V | head -1)" = "8.2" ] || continue
+
+        missing="$("$candidate" -r 'echo implode(" ", array_filter(["intl","zip","gd"], fn($e) => ! extension_loaded($e)));' 2>/dev/null || echo "?")"
+
+        if [ -n "$missing" ]; then
+            echo "  skipping $candidate ($version) — missing extensions: $missing"
+            continue
+        fi
+
+        PHP_BIN="$candidate"
+        break
+    done
+fi
+
+if [ -z "$PHP_BIN" ]; then
+    echo "No usable PHP found. Re-run as: PHP_BIN=/path/to/php bash deploy/update.sh"
+    exit 1
+fi
+
+echo "  php: $PHP_BIN ($("$PHP_BIN" -r 'echo PHP_VERSION;'))"
 
 # Through $PHP_BIN, never bare `composer` — see the long note in setup.sh.
 # Bare composer runs under the system default PHP, which on shared hosting
 # is not the version the site is served with.
-if [ -f "$ROOT/composer.phar" ]; then
-    COMPOSER="${COMPOSER:-$PHP_BIN $ROOT/composer.phar}"
+if [ -n "${COMPOSER:-}" ]; then
+    : # Caller knows better.
+elif [ -f "$ROOT/composer.phar" ]; then
+    COMPOSER="$PHP_BIN $ROOT/composer.phar"
+elif command -v composer >/dev/null 2>&1 && "$PHP_BIN" "$(command -v composer)" --version >/dev/null 2>&1; then
+    COMPOSER="$PHP_BIN $(command -v composer)"
 else
-    COMPOSER="${COMPOSER:-$PHP_BIN $(command -v composer)}"
+    # setup.sh leaves a composer.phar behind for exactly this case; if it
+    # is not there, say so rather than expanding to "$PHP_BIN " and
+    # failing with a confusing "could not open input file".
+    echo "No composer found. Run deploy/setup.sh once, or set COMPOSER=..."
+    exit 1
 fi
 
 cd "$APP"
