@@ -2,6 +2,7 @@
 
 namespace App\Domain\Authentication\Http\Requests;
 
+use App\Domain\Authentication\Rules\EmailNotUsedByAnotherAccount;
 use App\Domain\Authentication\Models\User;
 use App\Domain\Authentication\Support\UserIdentityRules;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -26,6 +27,12 @@ class ProfileUpdateRequest extends FormRequest
                 'email',
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
+                // Also checks platform staff. The `unique` rule above only
+                // sees this table, so without this a vendor could edit
+                // their profile to an address already held by a platform
+                // administrator — the one path into that collision that
+                // does not go through a signup form.
+                new EmailNotUsedByAnotherAccount(ignoreUserId: $this->user()->id),
             ],
             // Both are unique in the database as of the 2026_08_06
             // migration, so they need the matching rule here — without

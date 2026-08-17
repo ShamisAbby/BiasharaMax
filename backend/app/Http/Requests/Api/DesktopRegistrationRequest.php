@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Domain\Authentication\Rules\EmailNotUsedByAnotherAccount;
 use App\Domain\Authentication\Models\User;
 use App\Domain\Business\Models\BusinessType;
 use App\Domain\Localization\Models\Country;
@@ -42,7 +43,7 @@ class DesktopRegistrationRequest extends FormRequest
     {
         return [
             'owner_name' => ['required', 'string', 'max:255'],
-            'owner_email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class.',email'],
+            'owner_email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class.',email', new EmailNotUsedByAnotherAccount],
             'owner_phone' => ['nullable', 'string', 'max:32', 'unique:'.User::class.',phone'],
             'password' => ['required', 'confirmed', Password::defaults()],
 

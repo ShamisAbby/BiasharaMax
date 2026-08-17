@@ -2,6 +2,7 @@
 
 namespace App\Domain\Business\Http\Requests;
 
+use App\Domain\Authentication\Rules\EmailNotUsedByAnotherAccount;
 use App\Domain\Authentication\Models\User;
 use App\Domain\Business\Models\Branch;
 use App\Domain\RBAC\Models\Role;
@@ -23,7 +24,7 @@ class EmployeeInviteRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class.',email'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class.',email', new EmailNotUsedByAnotherAccount],
             // Multiple roles per employee; permissions are the union of
             // all of them. `role_ids.*` is scoped to the caller's own
             // business so a role from another tenant can't be attached.

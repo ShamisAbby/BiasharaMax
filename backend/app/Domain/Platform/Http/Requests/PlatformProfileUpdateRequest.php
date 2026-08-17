@@ -2,6 +2,7 @@
 
 namespace App\Domain\Platform\Http\Requests;
 
+use App\Domain\Authentication\Rules\EmailNotUsedByAnotherAccount;
 use App\Domain\Authentication\Models\PlatformUser;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -28,6 +29,7 @@ class PlatformProfileUpdateRequest extends FormRequest
                 'email',
                 'max:255',
                 Rule::unique(PlatformUser::class)->ignore($this->user('platform')->id),
+                new EmailNotUsedByAnotherAccount(ignorePlatformUserId: $this->user('platform')->id),
             ],
         ];
     }

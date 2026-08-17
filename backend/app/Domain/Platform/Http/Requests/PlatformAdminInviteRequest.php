@@ -2,6 +2,7 @@
 
 namespace App\Domain\Platform\Http\Requests;
 
+use App\Domain\Authentication\Rules\EmailNotUsedByAnotherAccount;
 use App\Domain\Authentication\Models\PlatformUser;
 use App\Domain\RBAC\Models\PlatformRole;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -22,7 +23,7 @@ class PlatformAdminInviteRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.PlatformUser::class.',email'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.PlatformUser::class.',email', new EmailNotUsedByAnotherAccount],
             'platform_role_id' => ['nullable', 'uuid', Rule::exists(PlatformRole::class, 'id')],
         ];
     }

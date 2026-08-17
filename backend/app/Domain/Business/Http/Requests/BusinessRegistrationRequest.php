@@ -2,6 +2,7 @@
 
 namespace App\Domain\Business\Http\Requests;
 
+use App\Domain\Authentication\Rules\EmailNotUsedByAnotherAccount;
 use App\Domain\Authentication\Models\User;
 use App\Domain\Business\Models\BusinessType;
 use App\Domain\Subscription\Models\RegistrationCode;
@@ -25,7 +26,7 @@ class BusinessRegistrationRequest extends FormRequest
     {
         return [
             'owner_name' => ['required', 'string', 'max:255'],
-            'owner_email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class.',email'],
+            'owner_email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class.',email', new EmailNotUsedByAnotherAccount],
             // `users.phone` became unique in the 2026_08_06 migration, so
             // this needs the matching rule — otherwise a duplicate number
             // aborts the registration transaction with a raw
