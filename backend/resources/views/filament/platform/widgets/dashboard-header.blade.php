@@ -19,8 +19,11 @@
             <x-filament::badge :color="$databaseOnline ? 'success' : 'danger'">
                 DB {{ $databaseOnline ? 'Online' : 'Offline' }}
             </x-filament::badge>
-            <x-filament::badge :color="$redisOnline ? 'success' : 'danger'">
-                Redis {{ $redisOnline ? 'Online' : 'Offline' }}
+            {{-- Grey where Redis isn't configured: this deployment runs
+                 cache, session and queue on the database, so neither
+                 "Online" nor "Offline" describes it honestly. --}}
+            <x-filament::badge :color="! $redisInUse ? 'gray' : ($redisOnline ? 'success' : 'danger')">
+                Redis {{ ! $redisInUse ? 'Not in use' : ($redisOnline ? 'Online' : 'Offline') }}
             </x-filament::badge>
         </div>
     </div>

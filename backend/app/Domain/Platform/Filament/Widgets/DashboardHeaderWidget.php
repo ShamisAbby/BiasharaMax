@@ -46,6 +46,10 @@ class DashboardHeaderWidget extends Widget
             },
             'databaseOnline' => $overview['system_health']['database'],
             'redisOnline' => $overview['system_health']['redis'],
+            // False on shared hosting, where cache, session and queue all
+            // run on the database. The view should say "not in use"
+            // rather than claiming a service that isn't installed.
+            'redisInUse' => $overview['system_health']['redis_in_use'] ?? true,
         ];
     }
 

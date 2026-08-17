@@ -52,6 +52,7 @@ class PlatformStatusBadgeService
      *     title: string,
      *     database: bool,
      *     redis: bool,
+     *     redisInUse: bool,
      *     healthLabel: string
      * }
      */
@@ -68,11 +69,20 @@ class PlatformStatusBadgeService
                 'warning' => 'Degraded',
                 default => 'Down',
             },
+            // "not in use" rather than "online" where Redis isn't
+            // configured. Reporting a service as online when it isn't
+            // even installed is the sort of reassurance this class was
+            // extracted to stop.
             'title' => "{$health['label']} · DB "
                 .($health['database'] ? 'online' : 'offline')
-                .' · Redis '.($health['redis'] ? 'online' : 'offline'),
+                .' · Redis '.match (true) {
+                    ! $health['redis_in_use'] => 'not in use',
+                    $health['redis'] => 'online',
+                    default => 'offline',
+                },
             'database' => $health['database'],
             'redis' => $health['redis'],
+            'redisInUse' => $health['redis_in_use'],
             'healthLabel' => $health['label'],
         ];
     }
@@ -87,7 +97,7 @@ class PlatformStatusBadgeService
     }
 
     /**
-     * @return array{database: bool, redis: bool, label: string}
+     * @return array{database: bool, redis: bool, redis_in_use: bool, label: string}
      */
     private function health(): array
     {
@@ -98,6 +108,7 @@ class PlatformStatusBadgeService
             return [
                 'database' => (bool) $overview['system_health']['database'],
                 'redis' => (bool) $overview['system_health']['redis'],
+                'redis_in_use' => (bool) ($overview['system_health']['redis_in_use'] ?? true),
                 'label' => $pulse['system_health_label'],
             ];
         });
@@ -134,7 +145,7 @@ class PlatformStatusBadgeService
     }
 
     /**
-     * @param  array{database: bool, redis: bool, label: string}  $health
+     * @param  array{database: bool, redis: bool, redis_in_use: bool, label: string}  $health
      */
     private function color(array $health): string
     {

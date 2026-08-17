@@ -60,11 +60,54 @@ class PlatformAnalyticsService
      */
     private function systemHealth(): array
     {
+        $redisInUse = $this->usesRedis();
+
         return [
             'database' => $this->checkDatabase(),
-            'redis' => $this->checkRedis(),
+            // "Is the Redis dependency satisfied", not "is Redis running".
+            // Where nothing is configured to use Redis there is no
+            // dependency to fail, so the answer is yes.
+            'redis' => $redisInUse ? $this->checkRedis() : true,
+            'redis_in_use' => $redisInUse,
             'queue_connection' => config('queue.default'),
         ];
+    }
+
+    /**
+     * Whether anything in this deployment actually routes through Redis.
+     *
+     * Production runs on shared hosting with no Redis at all — cache,
+     * session and queue are all on the database connection by design.
+     * Pinging an unconfigured Redis there fails every time, and the
+     * status badge treats an unreachable Redis as `danger`, so the
+     * topbar read "Down" permanently while the platform was healthy and
+     * the health score beside it said "Good".
+     *
+     * That is worse than an indicator that is simply wrong. An alarm
+     * that is always on is an alarm nobody reads, so the first genuine
+     * outage looks exactly like the last two months of noise.
+     *
+     * Checked against configuration rather than reachability: absence of
+     * Redis is only fine because nothing needs it. If someone switches
+     * the cache back to Redis, this returns true again and an
+     * unreachable Redis is once more an outage.
+     */
+    private function usesRedis(): bool
+    {
+        $drivers = [
+            config('cache.default'),
+            config('session.driver'),
+            config('queue.default'),
+            config('broadcasting.default'),
+        ];
+
+        foreach ($drivers as $driver) {
+            if (is_string($driver) && str_contains($driver, 'redis')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function checkDatabase(): bool

@@ -41,6 +41,7 @@ interface Overview {
     system_health: {
         database: boolean;
         redis: boolean;
+        redis_in_use: boolean;
         queue_connection: string;
     };
 }
@@ -293,17 +294,29 @@ export default function PlatformDashboard({
                                 ? 'Online'
                                 : 'Offline'}
                         </BiBadge>
+                        {/*
+                            Neutral, not green, where Redis isn't
+                            configured — this deployment runs cache,
+                            session and queue on the database. A green
+                            "Online" would claim a service that isn't
+                            installed; a red "Offline" reads as an
+                            outage. Neither is true.
+                        */}
                         <BiBadge
                             variant={
-                                overview.system_health.redis
-                                    ? 'success'
-                                    : 'danger'
+                                !overview.system_health.redis_in_use
+                                    ? 'neutral'
+                                    : overview.system_health.redis
+                                      ? 'success'
+                                      : 'danger'
                             }
                         >
                             Redis{' '}
-                            {overview.system_health.redis
-                                ? 'Online'
-                                : 'Offline'}
+                            {!overview.system_health.redis_in_use
+                                ? 'Not in use'
+                                : overview.system_health.redis
+                                  ? 'Online'
+                                  : 'Offline'}
                         </BiBadge>
                     </div>
                 </div>

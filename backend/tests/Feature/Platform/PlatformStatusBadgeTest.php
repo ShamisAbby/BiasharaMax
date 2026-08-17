@@ -123,6 +123,61 @@ class PlatformStatusBadgeTest extends TestCase
         ];
     }
 
+    /**
+     * A Redis that nothing uses is not an outage.
+     *
+     * Production runs on shared hosting with no Redis at all — cache,
+     * session and queue are on the database by design. The badge used to
+     * ping Redis unconditionally, fail, and render a red "Down" beside a
+     * health score reading "Good". It said Down for the platform's entire
+     * first day online while nothing was wrong.
+     *
+     * An indicator that is always red is worse than none: the first real
+     * outage looks exactly like every day before it. So the check is now
+     * "is the dependency satisfied", and where there is no dependency the
+     * answer is yes.
+     */
+    public function test_an_unused_redis_does_not_make_the_platform_look_down(): void
+    {
+        config([
+            'cache.default' => 'database',
+            'session.driver' => 'database',
+            'queue.default' => 'database',
+            'broadcasting.default' => 'null',
+        ]);
+
+        app(PlatformStatusBadgeService::class)->flush();
+
+        $status = app(PlatformStatusBadgeService::class)->current();
+
+        $this->assertFalse($status['redisInUse']);
+        $this->assertTrue($status['redis'], 'An unconfigured Redis must not read as a failed dependency.');
+        $this->assertStringContainsString('Redis not in use', $status['title']);
+        $this->assertNotSame('Down', $status['label']);
+    }
+
+    /**
+     * The other half of the same rule, and the reason it is written
+     * against configuration rather than reachability: switch the cache
+     * back to Redis and an unreachable Redis is an outage again.
+     */
+    public function test_a_configured_but_unreachable_redis_is_still_an_outage(): void
+    {
+        config([
+            'cache.default' => 'redis',
+            'database.redis.default.host' => '127.0.0.1',
+            'database.redis.default.port' => 6399, // Nothing listens here.
+        ]);
+
+        app(PlatformStatusBadgeService::class)->flush();
+
+        $status = app(PlatformStatusBadgeService::class)->current();
+
+        $this->assertTrue($status['redisInUse']);
+        $this->assertFalse($status['redis']);
+        $this->assertSame('Down', $status['label']);
+    }
+
     public function test_the_live_badge_agrees_with_the_rule(): void
     {
         $status = app(PlatformStatusBadgeService::class)->current();

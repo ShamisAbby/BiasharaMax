@@ -190,13 +190,70 @@ echo "==> Database migrations"
 "$PHP_BIN" artisan migrate --force
 
 echo
+echo "==> Clearing cached config before seeding"
+# Not housekeeping — a correctness requirement.
+#
+# Laravel skips loading .env entirely when a config cache exists, so
+# `env()` outside config files returns null. PlatformUserSeeder reads
+# SUPERADMIN_PASSWORD through env(), and on a re-run (when the previous
+# run left a config cache behind) it reads null, prints one line, and
+# creates nothing. The site comes up with no way to log in and no error
+# that says why.
+"$PHP_BIN" artisan config:clear
+
+echo
 echo "==> Reference data"
-# Each of these is idempotent (updateOrCreate / firstOrCreate), so a
-# re-run refreshes them without duplicating or clobbering live edits.
-for seeder in PermissionSeeder BusinessTypeSeeder CurrencySeeder CountrySeeder NotificationChannelSeeder NotificationTemplateSeeder PlatformRoleSeeder PlatformUserSeeder; do
-    echo "    $seeder"
-    "$PHP_BIN" artisan db:seed --class="$seeder" --force
-done
+# DatabaseSeeder, not a hand-written list. The first version of this
+# script listed eight seeders by name and silently omitted seven of them,
+# including SubscriptionPlanSeeder — so the site launched with no plans,
+# no role templates, no website templates and no payment gateways, and
+# "Start free trial" returned 503. Duplicating an ordering that already
+# exists in DatabaseSeeder was the mistake; that class also encodes which
+# seeder must run before which, which a flat list here cannot.
+#
+# Every seeder in it is idempotent (updateOrCreate / firstOrCreate), so a
+# re-run refreshes reference data without duplicating or clobbering it.
+"$PHP_BIN" artisan db:seed --force
+
+# Not in DatabaseSeeder, because adding it there would change what the
+# module-gating tests see. Production needs it: without the module rows
+# the vendor dashboard has nothing to gate and sections do not appear.
+echo "    DashboardModuleSeeder"
+"$PHP_BIN" artisan db:seed --class=DashboardModuleSeeder --force
+
+echo
+echo "==> SuperAdmin account"
+# Checked here rather than left to the seeder. The seeder reports a
+# missing password and returns without an error status, which inside a
+# `set -e` script scrolls past as one line among forty and leaves an
+# unreachable admin panel.
+superadmin_password="$(grep -E '^SUPERADMIN_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | xargs || true)"
+
+if [ -z "$superadmin_password" ]; then
+    echo
+    echo "  SUPERADMIN_PASSWORD is blank in backend/.env."
+    echo "  Nothing can log in to /platform until it is set."
+    echo
+    echo "  Set SUPERADMIN_EMAIL and SUPERADMIN_PASSWORD, then re-run"
+    echo "  this script. Use a password you have not used elsewhere."
+    exit 1
+fi
+unset superadmin_password
+
+"$PHP_BIN" artisan db:seed --class=PlatformRoleSeeder --force
+"$PHP_BIN" artisan db:seed --class=PlatformUserSeeder --force
+
+# The seeder returns quietly on several paths, so confirm the row exists
+# rather than trusting that it ran.
+platform_users="$("$PHP_BIN" artisan tinker --execute='echo \App\Domain\Authentication\Models\PlatformUser::query()->count();' 2>/dev/null | tr -cd '0-9' || echo 0)"
+
+if [ "${platform_users:-0}" -lt 1 ]; then
+    echo
+    echo "  No platform user exists after seeding."
+    echo "  Check backend/storage/logs for the reason, then re-run."
+    exit 1
+fi
+echo "    $platform_users platform user(s) present"
 
 echo
 echo "==> Filament assets"
