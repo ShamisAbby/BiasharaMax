@@ -108,12 +108,27 @@ web and keeps everything else above it. If the document root stays at
 database password, mail password and `APP_KEY` — is fetchable by anyone who
 types the URL.
 
-If your plan won't let you move the document root, use a symlink instead:
+If your plan won't let you move the document root — common on Hostinger
+for the primary domain — publish into `public_html` instead:
 
 ```bash
-rm -rf ~/public_html
-ln -s ~/biasharamax/backend/public ~/public_html
+cd ~/biasharamax && bash deploy/publish-to-public-html.sh
 ```
+
+That copies **only** `backend/public/` into the web root and rewrites
+`index.php` to load the application from `~/biasharamax/backend`. The rest
+stays above the web root.
+
+**Re-run it after every deploy.** The built CSS and JavaScript are copies,
+not links, so without a re-run the site serves the previous build's assets
+against the new HTML — which usually looks like nothing changed, or like
+half the page broke.
+
+Do not copy the whole project into `public_html`. `.env` holds the database
+password, the mail password and `APP_KEY`; in the web root any of them is
+one URL away, and `/.env` is among the most scanned-for paths on the
+internet. APP_KEY signs every session cookie, so leaking it lets anyone
+forge a login.
 
 Verify before you announce the site:
 
