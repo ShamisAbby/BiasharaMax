@@ -40,6 +40,32 @@ class Inventory extends Model
         'last_counted_at',
     ];
 
+    /**
+     * Keeps `variant_key` in step with `product_variant_id`.
+     *
+     * The unique index on (warehouse_id, product_id, variant_key) is what
+     * stops two stock rows existing for the same product in the same
+     * warehouse. It can only do that if `variant_key` is never NULL —
+     * every engine treats NULLs in a unique index as distinct, so a NULL
+     * would exempt exactly the rows the index exists to constrain.
+     *
+     * On `saving` rather than `creating`: moving a row from a variant to a
+     * simple product, or between variants, has to update the key too, or
+     * the constraint silently stops matching reality.
+     *
+     * This is deliberately not a generated column. MariaDB refuses to
+     * index one (error 1901) — see the inventories migration for the full
+     * account. That makes this hook the only thing holding the invariant
+     * up, which is why it is here on the model rather than in whichever
+     * services happen to write stock today.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $inventory): void {
+            $inventory->variant_key = (string) ($inventory->product_variant_id ?? '');
+        });
+    }
+
     protected function casts(): array
     {
         return [
