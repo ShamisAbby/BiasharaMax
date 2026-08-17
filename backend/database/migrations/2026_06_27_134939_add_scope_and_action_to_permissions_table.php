@@ -29,9 +29,19 @@ return new class extends Migration
             $table->string('scope', 20)->default('tenant')->after('module');
         });
 
-        if (DB::connection()->getDriverName() === 'mysql') {
-            DB::statement("alter table permissions add column action varchar(30) generated always as (substring_index(slug, '.', -1)) stored");
+        // `virtual` on MySQL/MariaDB, and `in_array` rather than a bare
+        // `=== 'mysql'` — both for the same reasons as the inventories
+        // migration, which has the long explanation. Short version: MariaDB
+        // rejects string functions in STORED generated columns (error 1901)
+        // because the persisted bytes would carry the writing session's
+        // collation, and Laravel 11 reports MariaDB under either driver
+        // name. Virtual columns are indexable on both engines, and the
+        // index on `action` below still works.
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            DB::statement("alter table permissions add column action varchar(30) generated always as (substring_index(slug, '.', -1)) virtual");
         } else {
+            // Postgres has no such restriction, so this one stays stored —
+            // it is read far more often than written.
             DB::statement("alter table permissions add column action varchar(30) generated always as (split_part(slug, '.', 2)) stored");
         }
 

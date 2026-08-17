@@ -54,7 +54,13 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (DB::connection()->getDriverName() !== 'mysql') {
+        // MariaDB counts. Laravel 11 added a separate `mariadb` driver, and
+        // skipping this on it would quietly leave SKUs and barcodes on a
+        // case-insensitive collation — so "abc-1" and "ABC-1" would collide
+        // in the unique index and be accepted as the same product code. A
+        // guard clause that silently does nothing is the worst shape for a
+        // correctness fix to take.
+        if (! in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
             return;
         }
 
@@ -65,7 +71,13 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (DB::connection()->getDriverName() !== 'mysql') {
+        // MariaDB counts. Laravel 11 added a separate `mariadb` driver, and
+        // skipping this on it would quietly leave SKUs and barcodes on a
+        // case-insensitive collation — so "abc-1" and "ABC-1" would collide
+        // in the unique index and be accepted as the same product code. A
+        // guard clause that silently does nothing is the worst shape for a
+        // correctness fix to take.
+        if (! in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
             return;
         }
 

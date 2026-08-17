@@ -43,7 +43,13 @@ return new class extends Migration
         // not work here: both Postgres and MySQL treat NULL as distinct in a
         // unique index, so two stock rows for the same simple (non-variant)
         // product in the same warehouse would NOT violate it.
-        if (DB::connection()->getDriverName() === 'mysql') {
+        //
+        // Note `in_array` rather than `=== 'mysql'`. Laravel 11 added a
+        // separate `mariadb` driver, and a MariaDB host reached through the
+        // older `mysql` driver reports `mysql` too — so this branch has to
+        // catch both names or a MariaDB server silently takes the Postgres
+        // path and fails on `WHERE` in a CREATE INDEX.
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
             // MySQL has no partial/filtered unique index. Emulate the same
             // "unique only for rows matching this condition" behavior with a
             // generated column that's NULL for rows we don't want to
@@ -51,10 +57,26 @@ return new class extends Migration
             // as distinct, so those rows are exempt, the same net effect as
             // a partial index's WHERE clause. char(73) = 36 (uuid) + 1 (':')
             // + 36 (uuid).
+            //
+            // VIRTUAL, not STORED, and this is the whole difficulty.
+            //
+            // MariaDB refuses CONCAT() inside a STORED generated column —
+            // error 1901, "Function or expression cannot be used in the
+            // GENERATED ALWAYS clause". The reason is that a stored column
+            // persists bytes whose collation would depend on the session
+            // that wrote them, so MariaDB will not commit to it. Computed
+            // at read time it is fine, and MariaDB 10.2+ and MySQL 5.7+ can
+            // both index a virtual column, so the unique constraint still
+            // holds. Verified against MariaDB 11.8: `case ... concat` is
+            // accepted as VIRTUAL and rejected as STORED, as are `if()`,
+            // `coalesce()` and `concat_ws()`.
+            //
+            // The cost is a little CPU per row read instead of per row
+            // written. Do not "optimise" this back to STORED.
             DB::statement(
                 "alter table inventories add column simple_product_key char(73) as (
                     case when product_variant_id is null then concat(warehouse_id, ':', product_id) else null end
-                ) stored"
+                ) virtual"
             );
             DB::statement(
                 'create unique index inventories_unique_simple_product on inventories (simple_product_key)'
@@ -63,7 +85,7 @@ return new class extends Migration
             DB::statement(
                 "alter table inventories add column variant_key char(73) as (
                     case when product_variant_id is not null then concat(warehouse_id, ':', product_variant_id) else null end
-                ) stored"
+                ) virtual"
             );
             DB::statement(
                 'create unique index inventories_unique_variant on inventories (variant_key)'
