@@ -42,14 +42,33 @@ echo
 PHP_BIN="${PHP_BIN:-}"
 
 if [ -z "$PHP_BIN" ]; then
-    for candidate in /opt/alt/php85/usr/bin/php /opt/alt/php84/usr/bin/php /usr/bin/php8.5 /usr/bin/php8.4 /opt/alt/php83/usr/bin/php /usr/bin/php8.3 /opt/alt/php82/usr/bin/php /usr/bin/php8.2 php; do
-        if command -v "$candidate" >/dev/null 2>&1; then
-            version="$("$candidate" -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;' 2>/dev/null || echo 0)"
-            if [ "$(printf '%s\n8.2\n' "$version" | sort -V | head -1)" = "8.2" ]; then
-                PHP_BIN="$candidate"
-                break
-            fi
+    # 8.4 first, not the newest available.
+    #
+    # Two reasons, learned the hard way on this host. Laravel 12 and
+    # Filament are not tested against 8.5 yet. And a newer PHP build on
+    # shared hosting often has *fewer* extensions compiled in — this
+    # server's 8.5 CLI is missing intl, zip and gd, so composer refuses to
+    # install filament, openspout, phpspreadsheet and laravel-backup. The
+    # newest interpreter is not the most capable one.
+    #
+    # Extensions are checked, not assumed: a candidate that cannot load
+    # what the packages need is skipped rather than selected and then
+    # failing several steps later with an error about a lock file.
+    for candidate in /opt/alt/php84/usr/bin/php /usr/bin/php8.4 /opt/alt/php85/usr/bin/php /usr/bin/php8.5 /opt/alt/php83/usr/bin/php /usr/bin/php8.3 /opt/alt/php82/usr/bin/php /usr/bin/php8.2 php; do
+        command -v "$candidate" >/dev/null 2>&1 || continue
+
+        version="$("$candidate" -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;' 2>/dev/null || echo 0)"
+        [ "$(printf '%s\n8.2\n' "$version" | sort -V | head -1)" = "8.2" ] || continue
+
+        missing="$("$candidate" -r 'echo implode(" ", array_filter(["intl","zip","gd"], fn($e) => ! extension_loaded($e)));' 2>/dev/null || echo "?")"
+
+        if [ -n "$missing" ]; then
+            echo "  skipping $candidate ($version) — missing extensions: $missing"
+            continue
         fi
+
+        PHP_BIN="$candidate"
+        break
     done
 fi
 
