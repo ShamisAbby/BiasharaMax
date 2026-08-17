@@ -93,7 +93,42 @@ echo "==> Maintenance mode"
 echo
 echo "==> Pulling changes"
 cd "$ROOT"
+
+# ---------------------------------------------------------------------
+# The script pulls a new version of itself, so anything it decided
+# before this line was decided by the *old* version.
+#
+# That is not hypothetical. A fix to the PHP selection landed in this
+# file, and the deploy that pulled the fix had already picked PHP 8.2
+# using the code the fix replaced — composer then failed on the lock
+# file, and the error blamed a PHP version nobody had chosen on
+# purpose. Reading the diff afterwards was no help either, because the
+# file on disk was by then the corrected one.
+#
+# So: notice when this file changes and start again with the new copy.
+# BIASHARAMAX_REEXEC stops that from recursing — the second run pulls
+# nothing, so its hash comparison is a no-op anyway, but a deploy script
+# that can loop forever is not worth the risk.
+# ---------------------------------------------------------------------
+self_before="$(md5sum "$ROOT/deploy/update.sh" 2>/dev/null | cut -d' ' -f1 || echo none)"
+
 git pull --ff-only
+
+self_after="$(md5sum "$ROOT/deploy/update.sh" 2>/dev/null | cut -d' ' -f1 || echo none)"
+
+if [ "$self_before" != "$self_after" ] && [ -z "${BIASHARAMAX_REEXEC:-}" ]; then
+    echo
+    echo "  deploy/update.sh changed in this pull — restarting with the new version."
+    echo
+
+    # The site is in maintenance mode and the trap is about to fire on
+    # exec. Hand the second run a repository it can pull nothing from
+    # and let it manage maintenance mode itself.
+    trap - EXIT
+
+    BIASHARAMAX_REEXEC=1 exec bash "$ROOT/deploy/update.sh" "$@"
+fi
+
 cd "$APP"
 
 echo
