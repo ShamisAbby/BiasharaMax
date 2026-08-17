@@ -36,7 +36,7 @@ return [
         'Hello BiasharaMax, I would like to know more about the system.',
     ),
 
-    'email' => env('CONTACT_EMAIL', 'hello@shamisaziz.com'),
+    'email' => env('CONTACT_EMAIL', 'info@biasharamax.com'),
 
     /** Human-readable. Unlike the WhatsApp value, this one is displayed. */
     'phone' => env('CONTACT_PHONE', '+255 772 800 257'),
