@@ -13,6 +13,7 @@ use App\Domain\Subscription\Services\SubscriptionService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -48,7 +49,7 @@ class BusinessRegistrationService
      */
     public function register(array $data): User
     {
-        return DB::transaction(function () use ($data) {
+        $owner = DB::transaction(function () use ($data) {
             $owner = User::query()->create([
                 'name' => $data['owner_name'],
                 'email' => $data['owner_email'],
@@ -115,10 +116,38 @@ class BusinessRegistrationService
 
             $this->chartOfAccountsService->seedDefaults($business->getKey());
 
-            event(new Registered($owner));
-
             return $owner->refresh();
         });
+
+        // ------------------------------------------------------------------
+        // Outside the transaction, and non-fatal.
+        //
+        // `User` implements MustVerifyEmail, so this event reaches
+        // Laravel's SendEmailVerificationNotification listener, and the
+        // VerifyEmail notification it sends is not queued — it opens an
+        // SMTP connection there and then. Inside the transaction that made
+        // the mail server a participant in the write: a wrong password or
+        // an unreachable host threw, the transaction rolled back, and the
+        // owner saw a bare 500 having successfully created nothing.
+        //
+        // A registration that has already been committed must not be
+        // undone by a mail failure. So the event fires after commit, and a
+        // failure here is logged rather than raised — the account exists
+        // and the person can request a new verification link. The failure
+        // still has to be recorded somewhere, because the alternative is a
+        // silent no-send that looks identical to a working system.
+        // ------------------------------------------------------------------
+        try {
+            event(new Registered($owner));
+        } catch (\Throwable $e) {
+            Log::error('Registration succeeded but the verification email failed to send.', [
+                'user_id' => $owner->getKey(),
+                'email' => $owner->email,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+
+        return $owner;
     }
 
     private function uniqueSlug(string $businessName): string
