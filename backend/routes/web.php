@@ -120,6 +120,20 @@ Route::middleware('guest')->group(function () {
 });
 Route::post('/registration-codes/validate', App\Domain\Subscription\Http\Controllers\RegistrationCodeValidationController::class)->name('registration-codes.validate');
 
+/*
+ * Where a suspended business is sent. Authenticated, but deliberately
+ * outside the `subscription.active` group — that middleware is what
+ * redirects here, so putting this route behind it would bounce the
+ * request between the two forever.
+ *
+ * `verified` is omitted too: an unverified owner whose business gets
+ * suspended still needs to be told why, and sending them to a "verify
+ * your email" screen instead answers a question they did not ask.
+ */
+Route::middleware('auth')
+    ->get('/suspended', App\Domain\Business\Http\Controllers\SuspendedBusinessController::class)
+    ->name('suspended');
+
 Route::middleware(['auth', 'verified', 'subscription.active'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 

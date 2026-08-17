@@ -22,17 +22,12 @@ export default function SubscriptionShow({
     status?: string | null;
 }) {
     const notice =
-        status === 'business-suspended'
+        status === 'subscription-locked'
             ? {
-                  title: 'This business has been suspended',
-                  body: 'Access has been paused by BiasharaMax. Renewing or changing your plan will not restore it — please contact support.',
+                  title: 'Your subscription has ended',
+                  body: 'Choose a plan below to restore access to your dashboard.',
               }
-            : status === 'subscription-locked'
-              ? {
-                    title: 'Your subscription has ended',
-                    body: 'Choose a plan below to restore access to your dashboard.',
-                }
-              : null;
+            : null;
 
     return (
         <AuthenticatedLayout
@@ -99,7 +94,7 @@ export default function SubscriptionShow({
                         description="Upgrades and billing are managed by our team during early access."
                     >
                         <div className="grid gap-4 sm:grid-cols-3">
-                            {plans.map((plan) => (
+                            {(plans ?? []).map((plan) => (
                                 <div
                                     key={plan.id}
                                     className={`rounded-lg border p-4 ${
@@ -118,12 +113,19 @@ export default function SubscriptionShow({
                                             /mo
                                         </span>
                                     </p>
+                                    {/* `features` is a nullable JSON column
+                                        cast to array, so a plan saved
+                                        without any arrives as null and
+                                        `.map` takes the whole page down
+                                        rather than dropping one list. */}
                                     <ul className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                                        {plan.features.map((feature) => (
-                                            <li key={feature}>
-                                                &bull; {feature}
-                                            </li>
-                                        ))}
+                                        {(plan.features ?? []).map(
+                                            (feature) => (
+                                                <li key={feature}>
+                                                    &bull; {feature}
+                                                </li>
+                                            ),
+                                        )}
                                     </ul>
                                 </div>
                             ))}

@@ -63,24 +63,78 @@ class BusinessSuspensionTest extends TestCase
 
         $this->actingAs($owner)
             ->get(route('dashboard'))
-            ->assertRedirect(route('settings.subscription.show'))
-            ->assertSessionHas('status', 'business-suspended');
+            ->assertRedirect(route('suspended'));
     }
 
     /**
-     * The reason has to survive the redirect. Sending a suspended owner to
-     * a page that says "your subscription has ended" invites them to pay
-     * for something that will not help.
+     * A suspension and an expired subscription must not share a
+     * destination. The subscription page invites payment, which does not
+     * lift a suspension, and it renders the authenticated layout — the
+     * thing that was throwing before the page could paint.
      */
-    public function test_the_reason_given_distinguishes_suspension_from_expiry(): void
+    public function test_suspension_and_expiry_lead_to_different_pages(): void
+    {
+        [$owner, $business] = $this->createOwnerWithBusiness();
+
+        $business->subscription->forceFill([
+            'status' => \App\Domain\Subscription\Models\Subscription::STATUS_SUSPENDED,
+        ])->save();
+
+        $this->actingAs($owner)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('settings.subscription.show'));
+
+        $business->update(['status' => Business::STATUS_SUSPENDED]);
+
+        $this->actingAs($owner)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('suspended'));
+    }
+
+    /**
+     * The page renders standalone, without the authenticated layout, and
+     * carries the support routes — the only action that helps here.
+     */
+    public function test_the_suspended_page_renders_with_support_contacts(): void
     {
         [$owner, $business] = $this->createOwnerWithBusiness();
 
         $business->update(['status' => Business::STATUS_SUSPENDED]);
 
         $this->actingAs($owner)
-            ->get(route('dashboard'))
-            ->assertSessionHas('status', 'business-suspended');
+            ->get(route('suspended'))
+            ->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Suspended')
+                ->has('businessName')
+                ->has('supportEmail')
+                ->has('whatsappUrl'));
+    }
+
+    /**
+     * Not reachable when it does not apply. A working account being told
+     * it is suspended is alarming and untrue.
+     */
+    public function test_an_active_business_cannot_open_the_suspended_page(): void
+    {
+        [$owner] = $this->createOwnerWithBusiness();
+
+        $this->actingAs($owner)
+            ->get(route('suspended'))
+            ->assertRedirect(route('dashboard'));
+    }
+
+    /**
+     * The redirect target must be exempt from the gate that produces it,
+     * or the two bounce off each other until the browser gives up.
+     */
+    public function test_the_suspended_page_does_not_redirect_to_itself(): void
+    {
+        [$owner, $business] = $this->createOwnerWithBusiness();
+
+        $business->update(['status' => Business::STATUS_SUSPENDED]);
+
+        $this->actingAs($owner)->get(route('suspended'))->assertOk();
     }
 
     /**

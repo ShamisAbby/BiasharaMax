@@ -22,23 +22,29 @@ class EnsureSubscriptionIsActive
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('settings.subscription.show', 'logout', 'profile.*')) {
+        if ($request->routeIs('settings.subscription.show', 'suspended', 'logout', 'profile.*')) {
             return $next($request);
         }
 
         $business = $request->user()?->business;
 
-        if ($business !== null && ! $this->subscriptions->hasActiveAccess($business)) {
-            // Two different reasons, two different messages. Telling a
-            // suspended owner their subscription has expired sends them
-            // to renew a subscription that is not the problem — they pay
-            // again, nothing changes, and support hears about it.
-            return redirect()->route('settings.subscription.show')
-                ->with('status', $business->isBlockedByPlatform()
-                    ? 'business-suspended'
-                    : 'subscription-locked');
+        if ($business === null || $this->subscriptions->hasActiveAccess($business)) {
+            return $next($request);
         }
 
-        return $next($request);
+        // Two different situations, two different destinations.
+        //
+        // A suspension is not a billing state. Sending a suspended owner
+        // to the subscription page invites them to pay for something that
+        // will not lift it — and that page renders the full authenticated
+        // layout, which builds a sidebar, module list and notification
+        // poller from data the account no longer has. That is what was
+        // throwing before the page could paint.
+        if ($business->isBlockedByPlatform()) {
+            return redirect()->route('suspended');
+        }
+
+        return redirect()->route('settings.subscription.show')
+            ->with('status', 'subscription-locked');
     }
 }
