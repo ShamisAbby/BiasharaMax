@@ -20,3 +20,8 @@ Thumbs.db
 # Docker local overrides / volumes
 /docker/.env
 /docker/volumes/
+
+# Deployment archives. A 139 MB backend.zip was committed by a `git add -A`
+# and rejected by GitHub at push time, after the whole upload had already
+# been sent — three commits had to be rewritten to get rid of it.
+*.zip
