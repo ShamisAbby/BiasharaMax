@@ -18,8 +18,16 @@ cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 APP="$ROOT/backend"
 
-PHP_BIN="${PHP_BIN:-$(command -v php8.3 || command -v php8.2 || command -v php)}"
-COMPOSER="${COMPOSER:-$(command -v composer || echo "$PHP_BIN $ROOT/composer.phar")}"
+PHP_BIN="${PHP_BIN:-$(command -v php8.4 || command -v php8.3 || command -v php8.2 || command -v php)}"
+
+# Through $PHP_BIN, never bare `composer` — see the long note in setup.sh.
+# Bare composer runs under the system default PHP, which on shared hosting
+# is not the version the site is served with.
+if [ -f "$ROOT/composer.phar" ]; then
+    COMPOSER="${COMPOSER:-$PHP_BIN $ROOT/composer.phar}"
+else
+    COMPOSER="${COMPOSER:-$PHP_BIN $(command -v composer)}"
+fi
 
 cd "$APP"
 

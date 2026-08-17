@@ -30,14 +30,19 @@ echo
 
 # ---------------------------------------------------------------------
 # PHP. Hostinger's default `php` on the command line is often an older
-# build than the one serving the site, and Laravel 12 needs 8.2+. Picking
-# the wrong one fails deep inside composer with an error about a syntax
-# feature, which points nowhere useful.
+# build than the one serving the site.
+#
+# Newest first, and 8.4 is the real floor despite composer.json saying
+# ^8.2. The floor is set by composer.lock, not composer.json: the lock was
+# resolved on a machine running 8.4, so it pins symfony/clock, /string,
+# /translation and nine others at versions requiring >= 8.4.1. An 8.2 or
+# 8.3 install fails with a page of conflicts that never mentions the lock
+# file, which is the actual cause.
 # ---------------------------------------------------------------------
 PHP_BIN="${PHP_BIN:-}"
 
 if [ -z "$PHP_BIN" ]; then
-    for candidate in /usr/bin/php8.3 /usr/bin/php8.2 /opt/alt/php83/usr/bin/php /opt/alt/php82/usr/bin/php php; do
+    for candidate in /opt/alt/php85/usr/bin/php /opt/alt/php84/usr/bin/php /usr/bin/php8.5 /usr/bin/php8.4 /opt/alt/php83/usr/bin/php /usr/bin/php8.3 /opt/alt/php82/usr/bin/php /usr/bin/php8.2 php; do
         if command -v "$candidate" >/dev/null 2>&1; then
             version="$("$candidate" -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;' 2>/dev/null || echo 0)"
             if [ "$(printf '%s\n8.2\n' "$version" | sort -V | head -1)" = "8.2" ]; then
@@ -54,23 +59,54 @@ if [ -z "$PHP_BIN" ]; then
     exit 1
 fi
 
+# Warn, do not stop. Some lock files resolve fine below 8.4, and refusing
+# to try would be guessing on the pessimistic side.
+PHP_MINOR="$("$PHP_BIN" -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')"
+if [ "$(printf '%s\n8.4\n' "$PHP_MINOR" | sort -V | head -1)" != "8.4" ]; then
+    echo
+    echo "  NOTE: composer.lock contains packages requiring PHP >= 8.4.1"
+    echo "  (symfony/clock, symfony/string and others). This is $PHP_MINOR."
+    echo "  If the install below fails on version conflicts, that is why —"
+    echo "  set PHP 8.4 in hPanel, or see DEPLOYMENT.md for pinning the lock"
+    echo "  to the server's version instead."
+    echo
+fi
+
 echo "  php:        $PHP_BIN ($("$PHP_BIN" -r 'echo PHP_VERSION;'))"
 
 # ---------------------------------------------------------------------
-# Composer. Hostinger usually ships it; falling back to a local phar keeps
-# this working on plans that do not.
+# Composer, run through the PHP we just chose.
+#
+# This is not a detail. Invoking bare `composer` runs it under whatever
+# PHP is first on PATH — on Hostinger that is the older system build, not
+# the one selected in hPanel. The first version of this script detected
+# 8.3, printed "php: 8.3.30", and then handed the install to composer
+# running under 8.2, which failed with a wall of version conflicts naming
+# a PHP version the script had already rejected. Detecting the right tool
+# and then not using it is worse than not detecting it at all.
 # ---------------------------------------------------------------------
-if command -v composer >/dev/null 2>&1; then
-    COMPOSER="composer"
-elif [ -f "$ROOT/composer.phar" ]; then
+COMPOSER=""
+
+if [ -f "$ROOT/composer.phar" ]; then
     COMPOSER="$PHP_BIN $ROOT/composer.phar"
-else
-    echo "  composer:   not found, downloading composer.phar"
+elif command -v composer >/dev/null 2>&1; then
+    COMPOSER_PATH="$(command -v composer)"
+
+    # Only usable this way if it is a PHP script or phar. Some hosts ship
+    # a shell wrapper, which PHP cannot execute.
+    if "$PHP_BIN" "$COMPOSER_PATH" --version >/dev/null 2>&1; then
+        COMPOSER="$PHP_BIN $COMPOSER_PATH"
+    fi
+fi
+
+if [ -z "$COMPOSER" ]; then
+    echo "  composer:   downloading composer.phar (so it runs under $PHP_BIN)"
     curl -sS https://getcomposer.org/installer | "$PHP_BIN" -- --install-dir="$ROOT" --filename=composer.phar
     COMPOSER="$PHP_BIN $ROOT/composer.phar"
 fi
 
 echo "  composer:   $COMPOSER"
+echo "              (running under $("$PHP_BIN" -r 'echo PHP_VERSION;'))"
 echo
 
 cd "$APP"

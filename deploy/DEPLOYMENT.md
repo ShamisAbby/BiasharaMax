@@ -161,6 +161,46 @@ correct behaviour, confusing symptom.
 
 ---
 
+## If composer says "your lock file does not contain a compatible set of packages"
+
+`composer.json` asks for `^8.2`, but `composer.lock` was resolved on a
+machine running PHP 8.4, so it pins `symfony/clock`, `symfony/string`,
+`symfony/translation` and nine other packages at versions requiring
+**PHP >= 8.4.1**. The lock decides, not composer.json.
+
+The error names the PHP version it found and never mentions the lock file,
+which is why it reads as a server problem rather than a resolution one.
+
+**First, check what the server has:**
+
+```bash
+ls -d /opt/alt/php8*/usr/bin/php /usr/bin/php8.* 2>/dev/null
+```
+
+**If 8.4 is there** — set it in hPanel (**Websites → PHP configuration →
+PHP version**) and re-run `setup.sh`. It now prefers the newest build it
+can find, so it will pick 8.4 up automatically.
+
+**If the newest is 8.3**, re-resolve the lock against that version. Do this
+on your Mac, not the server:
+
+```bash
+cd backend
+composer config platform.php 8.3.30
+composer update --ignore-platform-reqs=ext-* -W
+git add composer.json composer.lock && git commit -m "Pin platform PHP to 8.3 for Hostinger" && git push
+```
+
+`platform.php` tells composer to resolve as if it were running on the
+server. It is the fix worth having regardless of which version you land
+on: without it, whoever next runs `composer update` on a newer laptop
+silently pins packages the server cannot install, and the failure surfaces
+at deploy time rather than at update time.
+
+Then on the server: `cd ~/biasharamax && git pull && bash deploy/setup.sh`
+
+---
+
 ## Later deploys
 
 ```bash
