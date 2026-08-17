@@ -29,8 +29,14 @@ class EnsureSubscriptionIsActive
         $business = $request->user()?->business;
 
         if ($business !== null && ! $this->subscriptions->hasActiveAccess($business)) {
+            // Two different reasons, two different messages. Telling a
+            // suspended owner their subscription has expired sends them
+            // to renew a subscription that is not the problem — they pay
+            // again, nothing changes, and support hears about it.
             return redirect()->route('settings.subscription.show')
-                ->with('status', 'subscription-locked');
+                ->with('status', $business->isBlockedByPlatform()
+                    ? 'business-suspended'
+                    : 'subscription-locked');
         }
 
         return $next($request);

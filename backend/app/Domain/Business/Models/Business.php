@@ -34,6 +34,27 @@ class Business extends Model
 
     public const STATUS_EXPIRED = 'expired';
 
+    /**
+     * Has the platform itself shut this business out?
+     *
+     * Distinct from anything about the subscription. A SuperAdmin
+     * suspending a business is a decision about the account — non-payment,
+     * abuse, a dispute — and it has to hold even while the subscription is
+     * paid up and running.
+     *
+     * This existed as a column and a badge and nothing else: `suspend`
+     * wrote `status = 'suspended'`, the admin table rendered it in red,
+     * and no access check anywhere read it. The subscription stayed
+     * active, so the owner kept trading and the platform showed
+     * "Suspended" to the only people who could not tell the difference.
+     * A control that reports success and changes nothing is worse than no
+     * control, because it stops anyone looking for the real one.
+     */
+    public function isBlockedByPlatform(): bool
+    {
+        return in_array($this->status, [self::STATUS_SUSPENDED, self::STATUS_EXPIRED], true);
+    }
+
     protected $fillable = [
         'name',
         'slug',

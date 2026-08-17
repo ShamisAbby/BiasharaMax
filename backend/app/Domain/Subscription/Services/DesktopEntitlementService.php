@@ -63,6 +63,25 @@ class DesktopEntitlementService
             );
         }
 
+        // Before the subscription, for the same reason as the web app: a
+        // suspended business must not keep trading from a till just
+        // because its billing is in order. Without this the desktop POS
+        // was the one surface a suspension could not reach at all — the
+        // most damaging place to miss, since it is where money changes
+        // hands.
+        //
+        // `requires_product_key` is false: a key does not undo a
+        // suspension, and offering the box implies it might.
+        if ($business->isBlockedByPlatform()) {
+            return $this->state(
+                self::STATE_LOCKED,
+                'This business has been suspended. Contact BiasharaMax support.',
+                canStartTrial: false,
+                requiresProductKey: false,
+                subscription: $business->subscription,
+            );
+        }
+
         /** @var Subscription|null $subscription */
         $subscription = $business->subscription;
 

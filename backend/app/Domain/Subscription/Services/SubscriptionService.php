@@ -44,6 +44,20 @@ class SubscriptionService
      */
     public function hasActiveAccess(Business $business): bool
     {
+        // Checked before the subscription, and independently of it. A
+        // SuperAdmin suspension is a decision about the account, not about
+        // billing, so a business with a perfectly valid paid subscription
+        // must still be locked out when the platform has suspended it.
+        //
+        // The relationship between the two already ran one way —
+        // `syncBusinessStatus()` below marks a business suspended when its
+        // subscription is suspended — but nothing ran the other way, so
+        // suspending the business directly changed a column and nothing
+        // else.
+        if ($business->isBlockedByPlatform()) {
+            return false;
+        }
+
         $subscription = $business->subscription;
 
         if ($subscription === null) {
