@@ -1,0 +1,213 @@
+/**
+ * "Luxe" presentation layer for the public storefront.
+ *
+ * Opt-in: every rule is scoped under `[data-site-style='luxe']`, which
+ * Show.tsx sets only when a template's `header_config.style` is `luxe`.
+ * Every existing template renders exactly as before.
+ *
+ * Written as plain CSS rather than Tailwind classes on purpose — the
+ * section components in Sections.tsx are shared by every template, so
+ * restyling them from here means the luxe treatment needs no changes to
+ * their markup and can't regress the others.
+ *
+ * Colours come from the `--brand-*` custom properties Show.tsx already
+ * derives from the template's own `theme_colors`, so a business editing
+ * its palette restyles this automatically.
+ */
+
+/* ---------- Motion ----------
+ * Scroll reveal uses `animation-timeline: view()` — no JavaScript, no
+ * IntersectionObserver, nothing to hydrate. It is wrapped in @supports
+ * so that on a browser without scroll-driven animations the content is
+ * simply visible from the start rather than stuck at opacity 0, which
+ * is the failure mode of the usual JS approach when the script errors.
+ */
+@supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+        [data-site-style='luxe'] section > div > * {
+            animation: luxe-reveal linear both;
+            animation-timeline: view();
+            animation-range: entry 0% cover 28%;
+        }
+    }
+}
+
+@keyframes luxe-reveal {
+    from {
+        opacity: 0;
+        transform: translateY(28px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes luxe-drift {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+        transform: translate3d(0, -3%, 0) scale(1.06);
+    }
+}
+
+@keyframes luxe-sheen {
+    from {
+        background-position: 0% 50%;
+    }
+    to {
+        background-position: 200% 50%;
+    }
+}
+
+/* ---------- Surface ---------- */
+
+[data-site-style='luxe'] {
+    /* A warm metallic used for hairlines and the wordmark sheen. Derived
+       from the template's accent so it still tracks a custom palette. */
+    --luxe-gilt: color-mix(in oklab, var(--brand-accent) 70%, #ffffff);
+    --luxe-hairline: color-mix(in oklab, var(--brand-text) 12%, transparent);
+    letter-spacing: -0.011em;
+}
+
+[data-site-style='luxe'] h1,
+[data-site-style='luxe'] h2,
+[data-site-style='luxe'] h3 {
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+}
+
+/* Generous vertical rhythm is most of what separates a premium layout
+   from an ordinary one — and it has to scale down on a phone, hence the
+   clamp rather than a fixed value. */
+[data-site-style='luxe'] section {
+    padding-block: clamp(4rem, 9vw, 8.5rem);
+    position: relative;
+}
+
+[data-site-style='luxe'] section + section {
+    border-top: 1px solid var(--luxe-hairline);
+}
+
+/* ---------- Hero ---------- */
+
+/* The hero keeps its own dark primary→secondary gradient from
+ * Sections.tsx — it carries WHITE text, so replacing the background with
+ * a light one here would make the headline unreadable. This only layers
+ * extra depth on top of it. */
+[data-site-style='luxe'] section:first-of-type {
+    overflow: hidden;
+    isolation: isolate;
+}
+
+/* Slow-drifting champagne light over the hero gradient. `pointer-events:
+   none` so it can never intercept a click on the CTA underneath, and a
+   low-opacity accent so it reads as a sheen rather than a colour wash. */
+[data-site-style='luxe'] section:first-of-type::after {
+    content: '';
+    position: absolute;
+    inset: -30%;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(
+        34% 34% at 50% 45%,
+        color-mix(in oklab, var(--brand-accent) 30%, transparent),
+        transparent 70%
+    );
+    filter: blur(50px);
+}
+
+/* Keeps the hero's own content above the sheen. */
+[data-site-style='luxe'] section:first-of-type > * {
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-site-style='luxe'] section:first-of-type::after {
+        animation: luxe-drift 18s ease-in-out infinite;
+    }
+}
+
+[data-site-style='luxe'] section:first-of-type h1 {
+    font-size: clamp(2.5rem, 6.5vw, 5rem);
+    line-height: 1.02;
+}
+
+/* ---------- Buttons ---------- */
+
+[data-site-style='luxe'] a[href^='#'],
+[data-site-style='luxe'] button {
+    transition:
+        transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.25s ease,
+        background-color 0.25s ease;
+}
+
+[data-site-style='luxe'] a[class*='bg-[var(--brand-primary)]']:hover,
+[data-site-style='luxe'] button[class*='bg-[var(--brand-primary)]']:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -12px color-mix(in oklab, var(--brand-primary) 75%, transparent);
+}
+
+/* ---------- Cards ----------
+ * Targets the rounded panels the shared sections already render, so
+ * features, items, gallery tiles and testimonials all pick this up
+ * without touching their markup.
+ */
+[data-site-style='luxe'] [class*='rounded-2xl'],
+[data-site-style='luxe'] [class*='rounded-3xl'] {
+    border-radius: 1.5rem;
+    transition:
+        transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.35s ease,
+        border-color 0.35s ease;
+}
+
+[data-site-style='luxe'] [class*='rounded-2xl']:hover,
+[data-site-style='luxe'] [class*='rounded-3xl']:hover {
+    transform: translateY(-6px);
+    border-color: color-mix(in oklab, var(--brand-accent) 45%, transparent);
+    box-shadow:
+        0 1px 2px color-mix(in oklab, var(--brand-text) 6%, transparent),
+        0 26px 50px -24px color-mix(in oklab, var(--brand-text) 40%, transparent);
+}
+
+/* ---------- Header ---------- */
+
+[data-site-style='luxe'] header {
+    border-bottom: 1px solid var(--luxe-hairline);
+    background-color: color-mix(in oklab, var(--brand-background) 72%, transparent);
+    backdrop-filter: blur(16px) saturate(140%);
+}
+
+/* Slow metallic sweep across the business name. Purely decorative, and
+   it inherits a flat colour when the sweep isn't supported. */
+@media (prefers-reduced-motion: no-preference) {
+    [data-site-style='luxe'] header a:first-child > span:last-child {
+        background: linear-gradient(
+            100deg,
+            var(--brand-text) 0%,
+            var(--brand-text) 38%,
+            var(--luxe-gilt) 50%,
+            var(--brand-text) 62%,
+            var(--brand-text) 100%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: luxe-sheen 6s linear infinite;
+    }
+}
+
+/* ---------- Footer ---------- */
+
+[data-site-style='luxe'] footer {
+    border-top: 1px solid var(--luxe-hairline);
+    background:
+        radial-gradient(80% 100% at 50% 0%, color-mix(in oklab, var(--brand-primary) 10%, transparent), transparent 70%),
+        var(--brand-surface);
+}

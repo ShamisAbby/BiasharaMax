@@ -1,0 +1,1733 @@
+/**
+ * Hand-authored, plain CSS — no build step required.
+ *
+ * Filament's own shipped stylesheet (public/css/filament/filament/app.css)
+ * only contains styles for Filament's own `fi-*` component classes; it
+ * does NOT include arbitrary Tailwind utility classes (confirmed by
+ * inspecting the compiled output — no `.flex`, `.grid`, `.text-gray-500`,
+ * etc. exist in it). Filament's docs are explicit that using Tailwind
+ * utilities in custom Blade views requires setting up a full custom
+ * theme (Tailwind v4, via `make:filament-theme` + Vite). This project's
+ * own Vite pipeline is pinned to Tailwind v3 for the existing Inertia/
+ * React /admin app, and upgrading the shared `tailwindcss` package to
+ * v4 to support a Filament theme risks breaking that app's build. So
+ * instead of touching the shared toolchain, this file is loaded
+ * directly (no compilation) via a `panels::head.end` render hook in
+ * PlatformPanelProvider, and every custom Filament dashboard widget
+ * Blade view in this panel uses ONLY the classes defined here (prefixed
+ * `bos-`) rather than raw Tailwind utility classes.
+ *
+ * Edit this file directly — changes take effect on page refresh, no
+ * `npm run build` needed.
+ *
+ * The section below headed "Global luxury lift for Filament's own
+ * cards" intentionally reaches beyond `bos-*` classes to restyle
+ * Filament's native `.fi-section` component (soft elevation, larger
+ * radius) so every page in this panel — not just the dashboard — gets
+ * a consistent, more premium card treatment. It uses `:where()` to
+ * keep specificity low and `!important` only on the two properties
+ * that must beat Filament's own compiled rules.
+ */
+
+/* Filament's compiled CSS doesn't define this baseline Alpine.js rule
+   (confirmed by inspecting it), so `x-cloak` (used on the topbar
+   settings dropdown panel below) would otherwise flash visible before
+   Alpine initializes.
+
+   Scoped to the bare `x-cloak` attribute specifically: Filament also
+   uses Alpine's *valued* variants (`x-cloak="-lg"` on the sidebar,
+   `x-cloak="inline-flex"` on toggles), which mean "cloak only at this
+   breakpoint / restore to this display value" — an unqualified
+   `[x-cloak]` rule would wrongly hide those outright until Alpine
+   boots. */
+[x-cloak=''] {
+    display: none !important;
+}
+
+/* ---------- Sidebar spans full height, like /admin ----------
+ * Filament's default desktop (≥1024px) layout puts a full-width
+ * topbar across the very top of the screen, with the sidebar starting
+ * BELOW it (`top: 4rem`) — confirmed by reading
+ * vendor/filament/filament/resources/css/components/sidebar.css. The
+ * old /admin (Inertia/React) layout instead has the sidebar span the
+ * full viewport height from y=0, with the topbar only occupying the
+ * remaining width beside it. This reproduces that: the sidebar's lg
+ * top-offset is reset to 0, and the topbar is pinned beside it rather
+ * than above it (see the block below for why it has to leave the
+ * document flow to make that work).
+ * Only applies at the same ≥1024px breakpoint Filament itself uses —
+ * mobile/tablet is untouched (sidebar is already an off-canvas drawer
+ * there in both designs).
+ */
+
+@media (min-width: 1024px) {
+    .fi-body-has-topbar .fi-sidebar {
+        top: 0 !important;
+        height: 100dvh !important;
+    }
+
+    /* The topbar is a sibling ABOVE `.fi-layout`, and on desktop
+     * Filament makes the sidebar `position: sticky` (see
+     * `.fi-body:not(.fi-body-has-top-navigation).fi-body-has-sidebar-collapsible-on-desktop
+     * .fi-sidebar:not(.fi-sidebar-open)` in its compiled CSS). A sticky
+     * box is placed from its in-flow position, so while the topbar
+     * occupies 4rem of flow above `.fi-layout`, no `top` value can lift
+     * the sidebar into that band — it just leaves a gap above the logo.
+     *
+     * So the topbar is taken out of flow entirely and pinned beside the
+     * sidebar. `.fi-layout` then starts at the viewport top, which is
+     * what lets the sticky sidebar span the full height, and
+     * `.fi-main-ctn` gets the 4rem back as padding so page content
+     * isn't hidden underneath. Filament flags the expanded state with
+     * `.fi-main-ctn-sidebar-open` inside `.fi-layout`, so `:has()` keeps
+     * the topbar's edge tracking the sidebar between its collapsed and
+     * expanded widths — both read from Filament's own custom properties
+     * (set via ->sidebarWidth()/->collapsedSidebarWidth()), so they
+     * can't drift out of sync. */
+    .fi-topbar-ctn {
+        position: fixed;
+        top: 0;
+        inset-inline-end: 0;
+        inset-inline-start: var(--collapsed-sidebar-width, 5rem);
+        z-index: 25;
+        transition: inset-inline-start 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .fi-topbar-ctn:has(~ .fi-layout .fi-main-ctn-sidebar-open) {
+        inset-inline-start: var(--sidebar-width, 18rem);
+    }
+
+    .fi-main-ctn {
+        padding-top: 4rem;
+        min-height: 100dvh;
+    }
+
+    /* Filament's compiled stylesheet never actually consumes
+     * `--collapsed-sidebar-width` (confirmed: zero occurrences in
+     * public/css/filament/filament/app.css), so a collapsed sidebar
+     * would otherwise shrink to whatever its contents happen to
+     * measure. This applies the width the panel declares. */
+    .fi-body-has-sidebar-collapsible-on-desktop .fi-sidebar:not(.fi-sidebar-open) {
+        width: var(--collapsed-sidebar-width, 5rem);
+    }
+}
+
+/* Brand logo + "Admin" badge live in the sidebar header only (see the
+ * SIDEBAR_LOGO_AFTER render hook in PlatformPanelProvider) — the
+ * sidebar already carries the "BiasharaMax" logo at all times now that
+ * it spans full height, so the topbar's own default logo slot (which
+ * Filament shows at >=1024px via `.fi-topbar-start`) is hidden here to
+ * avoid rendering the brand twice. */
+.fi-topbar-start {
+    display: none !important;
+}
+
+/* The badge sits inline with "BiasharaMax" inside the sidebar's
+ * horizontally-centered flex header (.fi-sidebar-header), so it just
+ * needs its existing left margin — no extra layout rules needed here. */
+
+/* ---------- Content gutters matching /admin ----------
+ * /admin's <main> is `flex-1 overflow-y-auto p-4 sm:p-6` — 1rem of
+ * padding, 1.5rem from the `sm` breakpoint up, and no max-width. The
+ * cap is removed via ->maxContentWidth(Width::Full) in
+ * PlatformPanelProvider; Filament's own padding still steps up to 2rem
+ * at its `lg` breakpoint, so it's pinned to 1.5rem here to stop the
+ * dashboard grid floating in wide side gutters. */
+.fi-main {
+    padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+    .fi-main {
+        padding-inline: 1.5rem;
+    }
+}
+
+/* ---------- Page surface ----------
+ * /admin's shell is `bg-gray-50 dark:bg-gray-900` with cards one step
+ * lighter (`bg-white dark:bg-gray-800`). Filament's dark body defaults
+ * to gray-950 (#030712), which is nearly black — against it the cards
+ * below had almost no contrast. Matching /admin's gray-900 restores the
+ * intended one-step separation between page and card. */
+.fi-body:where(.dark, .dark *) {
+    background-color: #111827;
+}
+
+/* /admin's BiTopbar is `bg-white/90 dark:bg-gray-800/90` with
+   `backdrop-blur-md` and a `border-gray-200 dark:border-gray-700`
+   bottom edge — the same surface as the sidebar and cards, so the
+   chrome reads as one layer sitting above the page. */
+.dark .fi-topbar {
+    background-color: rgba(31, 41, 55, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #374151;
+}
+
+/* ---------- Global luxury lift for Filament's own cards ---------- */
+
+:where(.fi-section) {
+    border-radius: 1.25rem !important;
+    box-shadow:
+        0 1px 2px rgba(16, 24, 40, 0.04),
+        0 12px 24px -16px rgba(16, 24, 40, 0.10) !important;
+}
+
+/* Same opaque gray-800 surface as the KPI cards above, so every card on
+   a page reads as one consistent layer — /admin's BiCard and BiKpiCard
+   both use `dark:bg-gray-800`, and Filament's own default dark section
+   surface is darker than that. */
+:where(.dark) :where(.fi-section) {
+    background-color: #1f2937 !important;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.04) inset,
+        0 16px 32px -20px rgba(0, 0, 0, 0.55) !important;
+}
+
+/* ---------- Widgets fill their row ----------
+ * /admin's paired rows are plain `grid gap-6 lg:grid-cols-3` divs, so
+ * the cards in them stretch to a shared height by default and every row
+ * ends on a straight edge. Filament's grid item (`.fi-wi-widget`)
+ * stretches too, but the `.fi-section` inside it is only as tall as its
+ * content — so a short card next to a tall one (Live Activity beside
+ * Quick Actions, Revenue Trend beside Payment Methods) leaves a ragged
+ * gap under it. Making the item a flex column and letting its child
+ * grow passes that height through to the card. */
+.fi-wi-widget {
+    display: flex;
+    flex-direction: column;
+}
+
+.fi-wi-widget > * {
+    flex: 1 1 auto;
+}
+
+/* And pass it one level further, so the card's body region fills the
+ * extra height rather than leaving the surface short of its own bottom
+ * edge. Scoped to the plain contained variant — Filament's
+ * `fi-section-not-contained` and `fi-aside` variants lay themselves out
+ * with `display: grid` and must keep it. */
+.fi-wi-widget > .fi-section:not(.fi-section-not-contained):not(.fi-aside) {
+    display: flex;
+    flex-direction: column;
+}
+
+.fi-wi-widget > .fi-section:not(.fi-section-not-contained):not(.fi-aside) > .fi-section-content-ctn {
+    flex: 1 1 auto;
+}
+
+/* ---------- Stats-overview widgets nested in a section ----------
+ * A StatsOverviewWidget with a heading (Business Pulse, Queue Snapshot)
+ * gets wrapped in a `.fi-section`, and each stat inside is itself a
+ * card. Once the section takes the gray-800 card surface above, those
+ * inner cards kept their own darker default and read as holes punched
+ * into the card — card-inside-a-card, with the wrong one darker.
+ *
+ * Flattening the stats isn't the fix either — stripping their padding
+ * takes away the only thing separating one stat from the next, so the
+ * rows collapse together and crowd the card's edges.
+ *
+ * So the wrapper is the part that goes: the section keeps its heading
+ * but stops painting a surface, leaving "Business Pulse" as a plain
+ * heading above a row of real cards matching the KPI grid above. The
+ * section's own inline padding goes too, so heading and cards line up
+ * with the rest of the dashboard rather than sitting inset from it. */
+.fi-wi-stats-overview .fi-section {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+.fi-wi-stats-overview .fi-section-header,
+.fi-wi-stats-overview .fi-section-content {
+    padding-inline: 0 !important;
+}
+
+/* Same surface as the KPI cards (/admin's `dark:bg-gray-800` with a
+   gray-700 edge), so both grids on the dashboard read as one family. */
+.dark .fi-wi-stats-overview-stat {
+    background-color: #1f2937;
+    box-shadow: 0 0 0 1px #374151;
+}
+
+/* ---------- Layout helpers ---------- */
+
+.bos-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.bos-wrap {
+    flex-wrap: wrap;
+}
+
+/* ---------- Header ---------- */
+
+.bos-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .bos-header {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
+}
+
+.bos-header__greeting {
+    font-size: 1.625rem;
+    font-weight: 700;
+    line-height: 2.1rem;
+    color: #111827;
+    margin: 0;
+    letter-spacing: -0.015em;
+}
+
+:where(.dark) .bos-header__greeting {
+    color: #fff;
+}
+
+.bos-header__subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+:where(.dark) .bos-header__subtitle {
+    color: #9ca3af;
+}
+
+.bos-header__meta {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+:where(.dark) .bos-header__meta {
+    color: #6b7280;
+}
+
+.bos-header__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* ---------- KPI grid ---------- */
+
+.bos-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .bos-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .bos-kpi-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.bos-kpi-card {
+    position: relative;
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+    border: 1px solid #eef0f3;
+    background: #fff;
+    box-shadow:
+        0 1px 2px rgba(16, 24, 40, 0.04),
+        0 12px 24px -14px rgba(16, 24, 40, 0.10);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bos-kpi-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.bos-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+        0 4px 8px rgba(16, 24, 40, 0.05),
+        0 24px 40px -20px rgba(16, 24, 40, 0.18);
+}
+
+.bos-kpi-card:hover::before {
+    opacity: 1;
+}
+
+/* /admin's BiKpiCard is `bg-white ring-gray-200 dark:bg-gray-800
+   dark:ring-gray-700` — an opaque surface that sits visibly lighter
+   than the page behind it. The translucent white overlay this used
+   before let the near-black page show through, so the cards read as
+   black-on-black instead. These are the literal Tailwind hexes
+   (gray-800 #1F2937 / gray-700 #374151). */
+:where(.dark) .bos-kpi-card {
+    border-color: #374151;
+    background: #1f2937;
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.04) inset,
+        0 16px 32px -20px rgba(0, 0, 0, 0.55);
+}
+
+:where(.dark) .bos-kpi-card:hover {
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.06) inset,
+        0 28px 48px -20px rgba(0, 0, 0, 0.65);
+}
+
+/* Anchor hex values match /admin's per-metric KPI icon colors exactly
+   (Tailwind indigo-600, emerald-600, gray-500, blue-600, cyan-600,
+   amber-600, violet-600, purple-700, purple-600, slate-600, orange-600,
+   red-600, emerald-700, pink-600 — read directly from
+   Pages/Platform/Dashboard.tsx, not approximated). */
+.bos-kpi-card--indigo { color: #4f46e5; }
+.bos-kpi-card--emerald { color: #059669; }
+.bos-kpi-card--gray { color: #6b7280; }
+.bos-kpi-card--blue { color: #2563eb; }
+.bos-kpi-card--cyan { color: #0891b2; }
+.bos-kpi-card--amber { color: #d97706; }
+.bos-kpi-card--violet { color: #7c3aed; }
+.bos-kpi-card--purple-dark { color: #7e22ce; }
+.bos-kpi-card--purple { color: #9333ea; }
+.bos-kpi-card--slate { color: #475569; }
+.bos-kpi-card--orange { color: #ea580c; }
+.bos-kpi-card--red { color: #dc2626; }
+.bos-kpi-card--emerald-dark { color: #047857; }
+.bos-kpi-card--pink { color: #db2777; }
+
+.bos-kpi-card__top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.125rem;
+}
+
+.bos-kpi-card__icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 8px 16px -6px var(--bos-icon-shadow, rgba(99, 102, 241, 0.45));
+}
+
+.bos-kpi-card__icon svg {
+    width: 1.375rem;
+    height: 1.375rem;
+}
+
+.bos-kpi-card__spark {
+    flex: 1;
+    height: 1.5rem;
+}
+
+.bos-kpi-card__spark svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.bos-kpi-card__spark-line {
+    opacity: 0.55;
+}
+
+.bos-kpi-card__label {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    margin: 0 0 0.3rem;
+    letter-spacing: 0.01em;
+}
+
+:where(.dark) .bos-kpi-card__label {
+    color: #9ca3af;
+}
+
+.bos-kpi-card__value {
+    font-size: 1.625rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+}
+
+:where(.dark) .bos-kpi-card__value {
+    color: #fff;
+}
+
+.bos-kpi-card__change {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.bos-kpi-card__change--up {
+    color: #059669;
+}
+
+.bos-kpi-card__change--down {
+    color: #dc2626;
+}
+
+/* ---------- Business Pulse ---------- */
+
+.bos-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+:where(.dark) .bos-card-title {
+    color: #fff;
+}
+
+.bos-card-subtitle {
+    margin: 0.125rem 0 0;
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+:where(.dark) .bos-card-subtitle {
+    color: #9ca3af;
+}
+
+.bos-pulse-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem 1rem;
+    margin-top: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+    .bos-pulse-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.bos-pulse-stat__label {
+    font-size: 0.8125rem;
+    color: #6b7280;
+    margin: 0 0 0.375rem;
+}
+
+:where(.dark) .bos-pulse-stat__label {
+    color: #9ca3af;
+}
+
+.bos-pulse-stat__value {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+:where(.dark) .bos-pulse-stat__value {
+    color: #fff;
+}
+
+.bos-divider {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 1.25rem 0;
+}
+
+:where(.dark) .bos-divider {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.bos-ai-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 0.5rem;
+}
+
+:where(.dark) .bos-ai-heading {
+    color: #fff;
+}
+
+.bos-ai-heading svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: #db2777;
+}
+
+.bos-muted {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+:where(.dark) .bos-muted {
+    color: #9ca3af;
+}
+
+.bos-recommendation {
+    padding: 0.625rem 0;
+    border-top: 1px solid #f3f4f6;
+}
+
+:where(.dark) .bos-recommendation {
+    border-top-color: rgba(255, 255, 255, 0.05);
+}
+
+.bos-recommendation:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.bos-recommendation__title {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #111827;
+    margin: 0;
+}
+
+:where(.dark) .bos-recommendation__title {
+    color: #fff;
+}
+
+.bos-recommendation__summary {
+    margin: 0.125rem 0 0;
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+:where(.dark) .bos-recommendation__summary {
+    color: #9ca3af;
+}
+
+.bos-recommendation__time {
+    margin: 0.25rem 0 0;
+    font-size: 0.6875rem;
+    color: #9ca3af;
+}
+
+/* ---------- Two-column widget row ---------- */
+
+.bos-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .bos-split {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+
+/* ---------- Live activity ---------- */
+
+.bos-activity-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.625rem 0.5rem;
+    margin: 0 -0.5rem;
+    border-top: 1px solid #f3f4f6;
+    border-radius: 0.625rem;
+    transition: background-color 0.15s ease;
+}
+
+.bos-activity-item:hover {
+    background: #f9fafb;
+}
+
+:where(.dark) .bos-activity-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+:where(.dark) .bos-activity-item {
+    border-top-color: rgba(255, 255, 255, 0.05);
+}
+
+.bos-activity-item:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.bos-activity-item__text {
+    font-size: 0.875rem;
+    color: #111827;
+    margin: 0;
+}
+
+:where(.dark) .bos-activity-item__text {
+    color: #fff;
+}
+
+.bos-activity-item__text strong {
+    font-weight: 600;
+}
+
+.bos-activity-item__meta {
+    margin: 0.125rem 0 0;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.bos-activity-item__time {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+.bos-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--c-600, #4f46e5);
+    text-decoration: none;
+}
+
+.bos-link:hover {
+    text-decoration: underline;
+}
+
+/* ---------- Empty state ---------- */
+
+.bos-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2.5rem 1rem;
+}
+
+.bos-empty__icon {
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.12);
+    color: #4f46e5;
+    margin-bottom: 0.875rem;
+}
+
+:where(.dark) .bos-empty__icon {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.2), rgba(79, 70, 229, 0.08));
+    box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.2);
+}
+
+.bos-empty__icon svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.bos-empty__title {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: #111827;
+    margin: 0;
+}
+
+:where(.dark) .bos-empty__title {
+    color: #fff;
+}
+
+.bos-empty__description {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    max-width: 22rem;
+}
+
+:where(.dark) .bos-empty__description {
+    color: #9ca3af;
+}
+
+.bos-empty__action {
+    margin-top: 1rem;
+}
+
+/* ---------- Quick actions ---------- */
+
+.bos-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.bos-quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    padding: 1.125rem 0.5rem;
+    border-radius: 1rem;
+    border: 1px solid #eef0f3;
+    background: #fff;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+:where(.dark) .bos-quick-action {
+    border-color: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.bos-quick-action:hover {
+    border-color: transparent;
+    transform: translateY(-3px);
+    box-shadow: 0 16px 28px -16px rgba(16, 24, 40, 0.28);
+}
+
+:where(.dark) .bos-quick-action:hover {
+    box-shadow: 0 20px 32px -18px rgba(0, 0, 0, 0.6);
+}
+
+.bos-quick-action__icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 6px 14px -5px var(--bos-icon-shadow, rgba(99, 102, 241, 0.4));
+}
+
+.bos-quick-action__icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.bos-quick-action__label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #374151;
+    text-align: center;
+}
+
+:where(.dark) .bos-quick-action__label {
+    color: #d1d5db;
+}
+
+/* ---------- Charts / breakdown cards ---------- */
+
+.bos-chart-wrapper {
+    min-height: 14rem;
+}
+
+.bos-badge-list__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-top: 1px solid #f3f4f6;
+}
+
+:where(.dark) .bos-badge-list__row {
+    border-top-color: rgba(255, 255, 255, 0.05);
+}
+
+.bos-badge-list__row:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.bos-badge-list__label {
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+:where(.dark) .bos-badge-list__label {
+    color: #d1d5db;
+}
+
+/* ---------- Proportional bar list (breakdown widgets) ---------- */
+
+.bos-bar-row {
+    padding: 0.5rem 0.5rem;
+    margin: 0 -0.5rem;
+    border-radius: 0.625rem;
+    transition: background-color 0.15s ease;
+}
+
+.bos-bar-row:hover {
+    background: #f9fafb;
+}
+
+:where(.dark) .bos-bar-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.bos-bar-row__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.375rem;
+}
+
+.bos-bar-row__label {
+    font-size: 0.8125rem;
+    color: #374151;
+}
+
+:where(.dark) .bos-bar-row__label {
+    color: #d1d5db;
+}
+
+.bos-bar-row__value {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+:where(.dark) .bos-bar-row__value {
+    color: #fff;
+}
+
+.bos-bar-track {
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #f3f4f6;
+    overflow: hidden;
+}
+
+:where(.dark) .bos-bar-track {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.bos-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.5s ease;
+}
+
+/* ---------- Generic report/page helpers (FinanceReports, AiInsights) ---------- */
+
+.bos-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.bos-table-wrapper {
+    overflow-x: auto;
+}
+
+.bos-table {
+    width: 100%;
+    text-align: start;
+    border-collapse: collapse;
+}
+
+.bos-table th {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: start;
+}
+
+:where(.dark) .bos-table th {
+    color: #9ca3af;
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.bos-table td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #374151;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+:where(.dark) .bos-table td {
+    color: #d1d5db;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+.bos-summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+:where(.dark) .bos-summary-row {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.bos-summary-row__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin: 0;
+}
+
+:where(.dark) .bos-summary-row__label {
+    color: #9ca3af;
+}
+
+.bos-summary-row__value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+:where(.dark) .bos-summary-row__value {
+    color: #fff;
+}
+
+.bos-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+:where(.dark) .bos-banner {
+    color: #9ca3af;
+}
+
+.bos-banner svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+/* Amber variant for destructive-adjacent notices (e.g. the .env editor
+   warning on the System Settings page), matching /admin's own amber
+   caution block on the same screen. `align-items: flex-start` because
+   these run to more than one line, unlike the plain variant. */
+.bos-banner--warning {
+    align-items: flex-start;
+    padding: 0.75rem 1rem;
+    border: 1px solid #fde68a;
+    border-radius: 0.75rem;
+    background: #fffbeb;
+    color: #92400e;
+    line-height: 1.5;
+}
+
+:where(.dark) .bos-banner--warning {
+    border-color: rgba(180, 83, 9, 0.4);
+    background: rgba(120, 53, 15, 0.2);
+    color: #fcd34d;
+}
+
+.bos-banner--warning code {
+    padding: 0.0625rem 0.25rem;
+    border-radius: 0.25rem;
+    background: rgba(120, 53, 15, 0.12);
+    font-size: 0.8125em;
+}
+
+.bos-grid-2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .bos-grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.bos-kv-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.375rem 0;
+    font-size: 0.8125rem;
+}
+
+.bos-kv-row__label {
+    color: #374151;
+}
+
+:where(.dark) .bos-kv-row__label {
+    color: #d1d5db;
+}
+
+.bos-kv-row__value {
+    color: #6b7280;
+}
+
+:where(.dark) .bos-kv-row__value {
+    color: #9ca3af;
+}
+
+.bos-text-success {
+    color: #059669;
+}
+
+.bos-text-danger {
+    color: #dc2626;
+}
+
+/* ---------- Topbar extras (date, status badge, settings menu) ---------- */
+
+.bos-topbar-extras {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.bos-topbar-date {
+    display: none;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+    .bos-topbar-date {
+        display: inline;
+    }
+}
+
+:where(.dark) .bos-topbar-date {
+    color: #9ca3af;
+}
+
+.bos-topbar-status {
+    display: none;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+    .bos-topbar-status {
+        display: inline-flex;
+    }
+}
+
+.bos-topbar-status__dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+}
+
+.bos-topbar-status--success {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.bos-topbar-status--success .bos-topbar-status__dot {
+    background: #10b981;
+}
+
+:where(.dark) .bos-topbar-status--success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+}
+
+.bos-topbar-status--warning {
+    background: #fffbeb;
+    color: #b45309;
+}
+
+.bos-topbar-status--warning .bos-topbar-status__dot {
+    background: #f59e0b;
+}
+
+:where(.dark) .bos-topbar-status--warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fcd34d;
+}
+
+.bos-topbar-status--danger {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.bos-topbar-status--danger .bos-topbar-status__dot {
+    background: #ef4444;
+}
+
+:where(.dark) .bos-topbar-status--danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+}
+
+.bos-topbar-menu {
+    position: relative;
+}
+
+.bos-topbar-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    color: #6b7280;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.bos-topbar-icon-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.bos-topbar-icon-btn:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+:where(.dark) .bos-topbar-icon-btn {
+    color: #9ca3af;
+}
+
+:where(.dark) .bos-topbar-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+}
+
+.bos-topbar-menu__panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.5rem);
+    z-index: 40;
+    width: 14rem;
+    padding: 0.375rem;
+    border-radius: 0.875rem;
+    background: #fff;
+    border: 1px solid #eef0f3;
+    box-shadow: 0 4px 8px rgba(16, 24, 40, 0.05), 0 24px 40px -16px rgba(16, 24, 40, 0.2);
+}
+
+:where(.dark) .bos-topbar-menu__panel {
+    background: #1f2937;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 40px -16px rgba(0, 0, 0, 0.6);
+}
+
+.bos-topbar-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.625rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+    text-decoration: none;
+    transition: background-color 0.15s ease;
+}
+
+.bos-topbar-menu__item svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+.bos-topbar-menu__item:hover {
+    background: #f3f4f6;
+}
+
+:where(.dark) .bos-topbar-menu__item {
+    color: #d1d5db;
+}
+
+:where(.dark) .bos-topbar-menu__item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Currency/language dropdown items are buttons (not links), laid out
+ * with the option label on the left and an active-selection checkmark
+ * on the right — same visual pattern as /admin's own CheckIcon-marked
+ * dropdown items. */
+.bos-topbar-menu__item--option {
+    width: 100%;
+    justify-content: space-between;
+    background: transparent;
+    border: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.bos-topbar-menu__check {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: #4f46e5;
+    flex-shrink: 0;
+}
+
+.bos-topbar-menu__item--empty {
+    color: #9ca3af;
+    cursor: default;
+}
+
+.bos-topbar-menu__item--empty:hover {
+    background: transparent;
+}
+
+:where(.dark) .bos-topbar-menu__item--empty {
+    color: #6b7280;
+}
+
+/* "Admin" pill next to the brand logo, matching /admin's own badge
+ * (bg-indigo-50/text-indigo-700 light, bg-indigo-900/40/text-indigo-300
+ * dark) exactly. */
+.bos-brand-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-inline-start: 0.5rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+:where(.dark) .bos-brand-badge {
+    background: rgba(99, 102, 241, 0.16);
+    color: #a5b4fc;
+}
+
+/* ---------- Topbar alignment ----------
+ * Filament pushes its whole `.fi-topbar-end` cluster to the right with
+ * `margin-inline-start: auto`, which drags the search field and date
+ * along with the icons. /admin instead splits the bar: a `flex-1` left
+ * group (search + date + status) and a right group (icons + avatar).
+ * Letting the container fill the bar and giving the left group an auto
+ * end-margin reproduces that split without reordering any markup. */
+.fi-topbar-end {
+    flex: 1 1 auto;
+    margin-inline-start: 0;
+}
+
+.bos-topbar-extras--left {
+    margin-inline-end: auto;
+}
+
+/* ---------- User menu dropdown ----------
+ * Filament sizes every dropdown panel as `width: 100vw`, so the panel is
+ * as wide as its cap allows no matter how little is in it. With three
+ * short items ("Profile", "Activity", "Sign out") that leaves a wide
+ * empty gutter down the right. Sizing to content with a floor and a
+ * ceiling keeps it snug without letting a long name stretch it off
+ * screen.
+ *
+ * Selected via `:has()` rather than `.fi-user-menu …` because the topbar
+ * dropdown is rendered with `teleport`, which moves the panel out to the
+ * document body — it keeps only the generic `fi-dropdown-panel` class,
+ * with nothing to say which menu it came from. The theme switcher is
+ * unique to the user menu, so its presence identifies the panel.
+ *
+ * `!important` on both: the panel is positioned by Floating UI, which
+ * writes width/max-width as inline styles. */
+.fi-dropdown-panel:has(.fi-theme-switcher) {
+    width: max-content !important;
+    min-width: 11rem;
+    max-width: 18rem !important;
+}
+
+/* Floating UI anchors the panel to its trigger, which is the avatar
+ * button alone — the name and chevron beside it are a separate element
+ * (see right-extras.blade.php), so `bottom-end` lines the panel up with
+ * the avatar's right edge and it stops short of the cluster it belongs
+ * to. Pinning it to the viewport edge instead puts it flush under the
+ * chevron. 1rem matches `.fi-topbar`'s own inline padding, so the panel
+ * and the topbar content share a right edge.
+ *
+ * Safe to override the computed position because Floating UI writes
+ * `left`/`top` as inline styles rather than a transform — `top` is left
+ * alone so the panel still sits directly below the bar. */
+@media (min-width: 1024px) {
+    .fi-dropdown-panel:has(.fi-theme-switcher) {
+        left: auto !important;
+        right: 1rem !important;
+    }
+}
+
+/* The theme switcher is a grid of three equal columns, so on the old
+ * over-wide panel its icons were flung to the far corners. Given a track
+ * of its own it reads as one segmented control rather than three loose
+ * buttons. */
+.fi-theme-switcher {
+    gap: 0.125rem;
+    padding: 0.1875rem;
+    border-radius: 0.625rem;
+    background: #f3f4f6;
+}
+
+:where(.dark) .fi-theme-switcher {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.fi-theme-switcher-btn {
+    padding-block: 0.375rem;
+}
+
+/* ---------- Topbar user name ----------
+ * Placed after the avatar via flex `order` (both are direct children of
+ * `.fi-topbar-end`; everything else keeps the default order 0 and so
+ * stays to the left). See right-extras.blade.php for why the name is
+ * rendered separately from Filament's own user-menu trigger. */
+.fi-topbar-end .fi-user-menu {
+    order: 1;
+}
+
+.bos-topbar-user-name {
+    order: 2;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-inline-start: -0.25rem;
+    padding: 0.25rem 0.25rem;
+    background: transparent;
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+}
+
+.bos-topbar-user-name__chevron {
+    width: 1rem;
+    height: 1rem;
+    color: #9ca3af;
+}
+
+:where(.dark) .bos-topbar-user-name {
+    color: #e5e7eb;
+}
+
+/* Hidden below Filament's own lg breakpoint, where /admin also drops the
+ * name and shows the avatar alone. */
+@media (max-width: 1023px) {
+    .bos-topbar-user-name {
+        display: none;
+    }
+}
+
+/* ---------- Sidebar chrome matching /admin ----------
+ * Values below are read directly from /admin's own source
+ * (BiSidebar.tsx and PlatformLayout.tsx), not approximated:
+ * group labels are `text-xs font-semibold uppercase tracking-wide
+ * text-gray-400 dark:text-gray-500`; groups after the first carry
+ * `border-t border-gray-100 dark:border-gray-700 pt-4`; the active item
+ * gets an `h-5 w-0.5 rounded-full bg-indigo-600 dark:bg-indigo-400` bar
+ * pinned to its inline-start edge. */
+
+.fi-sidebar-group-label {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    line-height: 1rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: #9ca3af !important;
+}
+
+:where(.dark) .fi-sidebar-group-label {
+    color: #6b7280 !important;
+}
+
+.fi-sidebar-nav-groups > .fi-sidebar-group + .fi-sidebar-group {
+    border-top: 1px solid #f3f4f6;
+    padding-top: 1rem;
+    margin-top: 0.25rem;
+}
+
+:where(.dark) .fi-sidebar-nav-groups > .fi-sidebar-group + .fi-sidebar-group {
+    border-top-color: #374151;
+}
+
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    position: relative;
+}
+
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: #4f46e5;
+}
+
+:where(.dark) .fi-sidebar-item.fi-active > .fi-sidebar-item-btn::before {
+    background: #818cf8;
+}
+
+/* Filament deliberately makes `.fi-sidebar` transparent at >=1024px
+ * (it normally sits below the topbar and inherits the page surface).
+ * /admin's <aside> instead has its own surface and a right border
+ * (`bg-white border-r border-gray-200 dark:bg-gray-800
+ * dark:border-gray-700`) distinct from the page behind it — which this
+ * panel needs too now that the sidebar spans the full viewport height.
+ * The header's separate white bar + ring is dropped so it reads as one
+ * continuous surface, like /admin's.
+ *
+ * The surface color is set at every breakpoint (below 1024px the
+ * sidebar is an off-canvas drawer, which /admin also renders on the
+ * same `bg-white dark:bg-gray-800`); only the right border is
+ * desktop-only, since the drawer floats over an overlay instead. */
+.fi-sidebar {
+    background-color: #fff !important;
+}
+
+.dark .fi-sidebar {
+    background-color: #1f2937 !important;
+}
+
+@media (min-width: 1024px) {
+    .fi-sidebar {
+        border-inline-end: 1px solid #e5e7eb;
+    }
+
+    .dark .fi-sidebar {
+        border-inline-end-color: #374151;
+    }
+
+    /* At >=1024px Filament sets `.fi-body-has-topbar .fi-sidebar-header
+     * { display: none }` — on a stock panel the brand lives in the
+     * topbar at that size, so the sidebar's own header is redundant.
+     * This panel does the opposite (the topbar's logo slot is hidden and
+     * the brand lives in the sidebar, like /admin), so the header has to
+     * be put back. Its separate white/gray-900 fill and ring are dropped
+     * too, so it reads as part of one continuous sidebar surface. */
+    .fi-body-has-topbar .fi-sidebar-header {
+        display: flex !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+    }
+}
+
+/* ---------- Sidebar: only the nav list scrolls ----------
+ * /admin pins its logo header and "Collapse" footer and gives only the
+ * <nav> `flex-1 overflow-y-auto`. Filament's own sidebar is already a
+ * flex column, but nothing stops the header and footer from being
+ * squeezed or carried along once the nav list is long enough, so they
+ * are explicitly locked here and the nav is given `min-height: 0` —
+ * without which a flex item refuses to shrink below its content height
+ * and the whole sidebar scrolls instead of just the list. */
+.fi-sidebar {
+    overflow: hidden;
+}
+
+.fi-sidebar-header-ctn,
+.fi-sidebar-footer,
+.bos-sidebar-collapse {
+    flex-shrink: 0;
+}
+
+.fi-sidebar-nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* No top padding: the sticky search box below supplies it instead.
+       Left here, it would be a strip of scrollport ABOVE the sticky
+       element, and nav items scrolling through it would be visible over
+       the top of the search box. */
+    padding-block-start: 0 !important;
+}
+
+/* /admin's sidebar header is left-aligned (`flex items-center gap-2`),
+ * not centered, and the "Admin" badge sits immediately beside the
+ * wordmark — so the logo container must not stretch and push it to the
+ * far edge. */
+.fi-sidebar-header {
+    justify-content: flex-start !important;
+}
+
+.fi-sidebar-header-logo-ctn {
+    flex: 0 0 auto !important;
+}
+
+/* ---------- Sidebar nav search ---------- */
+
+/* In /admin the search box sits outside the scrolling <nav>. Filament's
+ * only hook at this spot (SIDEBAR_NAV_START) renders inside it, so it's
+ * stuck to the top of the scrollport instead — same result, and it
+ * needs the sidebar's own opaque surface so nav items scroll behind it
+ * rather than through it. */
+.bos-nav-search {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    /* Negative inline margins cancel `.fi-sidebar-nav`'s own 1.5rem
+       padding and the matching padding puts it back, so the opaque
+       background spans the FULL sidebar width. Without that the strip
+       either side of the input stays transparent and nav items are
+       visible sliding past it. */
+    margin-inline: -1.5rem;
+    padding: 1rem 1.5rem 0.75rem;
+    background-color: #fff;
+}
+
+/* `position: sticky` is still a positioned ancestor, so the absolutely
+   positioned search icon below stays anchored to this box. */
+.dark .bos-nav-search {
+    background-color: #1f2937;
+}
+
+.bos-nav-search__icon {
+    position: absolute;
+    /* Offset by the wrapper's own inline padding (added so its
+       background spans the full sidebar width), so the icon still lands
+       inside the input rather than out in the padding. */
+    inset-inline-start: 2.125rem;
+    width: 1rem;
+    height: 1rem;
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.bos-nav-search__input {
+    width: 100%;
+    padding: 0.375rem 0.75rem 0.375rem 2rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    font-size: 0.875rem;
+    color: #111827;
+    outline: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bos-nav-search__input::placeholder {
+    color: #9ca3af;
+}
+
+.bos-nav-search__input:focus {
+    background: #fff;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 1px #6366f1;
+}
+
+:where(.dark) .bos-nav-search__input {
+    border-color: #374151;
+    background: #111827;
+    color: #e5e7eb;
+}
+
+:where(.dark) .bos-nav-search__input:focus {
+    background: #111827;
+}
+
+/* ---------- Sidebar collapse button ---------- */
+
+.bos-sidebar-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-top: 1px solid #f3f4f6;
+    background: transparent;
+    font-size: 0.875rem;
+    color: #6b7280;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.bos-sidebar-collapse:hover {
+    background: #f9fafb;
+}
+
+.bos-sidebar-collapse__icon {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 0.2s ease;
+}
+
+.bos-rotate-180 {
+    transform: rotate(180deg);
+}
+
+:where(.dark) .bos-sidebar-collapse {
+    border-top-color: #374151;
+    color: #9ca3af;
+}
+
+:where(.dark) .bos-sidebar-collapse:hover {
+    background: #374151;
+}
+
+/* ---------- Icon background color utilities ----------
+ * Every anchor color (the darker end of each gradient) is the EXACT
+ * Tailwind `-600`/`-700` hex used by the old /admin (Inertia/React)
+ * dashboard for the same metric/action — read directly from its source
+ * (Pages/Platform/Dashboard.tsx, BiSidebar.tsx, BiChart.tsx's hardcoded
+ * palette), not approximated. A soft lighter-to-anchor gradient (rather
+ * than /admin's flat fill) is this panel's own luxury treatment on top
+ * of that shared palette, paired with a `--bos-icon-shadow` custom
+ * property that `.bos-kpi-card__icon` / `.bos-quick-action__icon` use
+ * for a subtle colored glow underneath — reused as-is for
+ * `.bos-bar-fill` (progress bars), where the gradient background is
+ * all that's needed and the shadow variable is simply unused/harmless.
+ */
+
+.bos-bg-indigo { background-image: linear-gradient(135deg, #818cf8, #4f46e5); --bos-icon-shadow: rgba(79, 70, 229, 0.4); }
+.bos-bg-emerald { background-image: linear-gradient(135deg, #34d399, #059669); --bos-icon-shadow: rgba(5, 150, 105, 0.4); }
+.bos-bg-emerald-dark { background-image: linear-gradient(135deg, #10b981, #047857); --bos-icon-shadow: rgba(4, 120, 87, 0.4); }
+.bos-bg-gray { background-image: linear-gradient(135deg, #9ca3af, #4b5563); --bos-icon-shadow: rgba(75, 85, 99, 0.35); }
+.bos-bg-blue { background-image: linear-gradient(135deg, #60a5fa, #2563eb); --bos-icon-shadow: rgba(37, 99, 235, 0.4); }
+.bos-bg-cyan { background-image: linear-gradient(135deg, #22d3ee, #0891b2); --bos-icon-shadow: rgba(8, 145, 178, 0.4); }
+.bos-bg-amber { background-image: linear-gradient(135deg, #fbbf24, #d97706); --bos-icon-shadow: rgba(217, 119, 6, 0.4); }
+.bos-bg-violet { background-image: linear-gradient(135deg, #a78bfa, #7c3aed); --bos-icon-shadow: rgba(124, 58, 237, 0.4); }
+.bos-bg-purple { background-image: linear-gradient(135deg, #c084fc, #9333ea); --bos-icon-shadow: rgba(147, 51, 234, 0.4); }
+.bos-bg-purple-dark { background-image: linear-gradient(135deg, #a855f7, #7e22ce); --bos-icon-shadow: rgba(126, 34, 206, 0.4); }
+.bos-bg-slate { background-image: linear-gradient(135deg, #94a3b8, #475569); --bos-icon-shadow: rgba(71, 85, 105, 0.4); }
+.bos-bg-orange { background-image: linear-gradient(135deg, #fb923c, #ea580c); --bos-icon-shadow: rgba(234, 88, 12, 0.4); }
+.bos-bg-red { background-image: linear-gradient(135deg, #f87171, #dc2626); --bos-icon-shadow: rgba(220, 38, 38, 0.4); }
+.bos-bg-pink { background-image: linear-gradient(135deg, #f472b6, #db2777); --bos-icon-shadow: rgba(219, 39, 119, 0.4); }
+.bos-bg-teal { background-image: linear-gradient(135deg, #2dd4bf, #0d9488); --bos-icon-shadow: rgba(13, 148, 136, 0.4); }
+.bos-bg-fuchsia { background-image: linear-gradient(135deg, #e879f9, #c026d3); --bos-icon-shadow: rgba(192, 38, 211, 0.4); }
+.bos-bg-rose { background-image: linear-gradient(135deg, #fb7185, #e11d48); --bos-icon-shadow: rgba(225, 29, 72, 0.4); }

@@ -1,76 +1,39 @@
-# BiasharaOS
+# BiasharaMax
 
-BiasharaOS is a modular Business Operating System for retail, hospitality, pharmacy,
-wholesale and service businesses, supporting Cloud SaaS, Desktop and Hybrid
-deployments from a single codebase.
+BiasharaMax is a modular Business Operating System for retail, hospitality, pharmacy,
+wholesale and service businesses in Zanzibar and Tanzania: POS, inventory, purchasing,
+customers/suppliers, accounting, reporting, and an AI assistant — usable all day with
+no internet connection.
 
-This repository is the application codebase. Product/architecture documentation
-lives in the separate [`BiasharaOS-Docs`](https://github.com/ShamisAbby/BiasharaOS-Docs)
-repository, which is the source of truth for requirements and standards.
-
-## Stack
-
-- **Backend:** Laravel 12, PHP 8.4+
-- **Frontend:** React, TypeScript, Inertia.js, TailwindCSS
-- **Database:** PostgreSQL
-- **Cache / Queue:** Redis, Laravel Horizon
-- **Auth:** Laravel Sanctum (session-based for the web app, tokens for future mobile/API clients)
-
-## Architecture
-
-The application is organized by business domain rather than technical layer:
+This is a monorepo with three deployable surfaces, one source of truth per concern:
 
 ```
-app/Modules/
-  Authentication/   Login, registration support, profile self-service, employee invitation acceptance
-  Business/          Business registration, settings, branches, warehouses, employees, tenant model
-  RBAC/               Roles & permissions
-  Subscription/      Plans, trials, subscription status
-  Shared/             Cross-cutting concerns: audit logging, tenant scoping, userstamps
+BOS/
+├── backend/          One Laravel app: REST API (Flutter desktop) + Web app (browser)
+│                      + Admin dashboard (platform operators). See backend/README.md.
+├── desktop-app/       Flutter Desktop client (Windows/macOS/Linux), offline-first,
+│                      syncs to backend/ whenever the machine has connectivity.
+│                      See desktop-app/README.md.
+├── shared/            Single source of truth consumed by both apps: OpenAPI contract,
+│                      database schema/ERD, translation strings (en + sw).
+├── docker/            Local/prod infrastructure: nginx, php, mysql, redis, docker-compose.
+├── scripts/           install / build-desktop / backup-db / restore-db / deploy / seed-demo.
+├── sql/               Raw SQL exports (schema + seed data) for environments without artisan.
+├── docs/              Architecture, API, database, sync engine, install & deploy docs, ADRs.
+├── backups/           Local DB backups (gitignored).
+└── licences/          Issued licence records (gitignored).
 ```
 
-Each module follows the same internal shape: `Models/`, `Services/`, `Http/Controllers/`,
-`Http/Requests/`, `Http/Resources/`, `Policies/`. Controllers stay thin; business logic
-lives in Services; authorization lives in Policies.
+## Why one Laravel codebase for three surfaces
 
-## Local development setup
+`backend/` serves the API, the web app and the admin dashboard from one set of models,
+services and migrations — see `backend/README.md` for the module layout and the
+`docs/ADR/` decisions on how each surface is separated (routing, guards, middleware)
+without duplicating business logic.
 
-Requires PHP 8.4+, Composer, Node 20+, PostgreSQL 16, and Redis.
+## Where to start
 
-```bash
-composer install
-npm install
-cp .env.example .env
-php artisan key:generate
-
-# create the database (adjust to your local Postgres superuser)
-createuser -s biasharaos
-psql -d postgres -c "ALTER USER biasharaos WITH PASSWORD 'biasharaos_dev_pw';"
-createdb -O biasharaos biasharaos
-
-php artisan migrate --seed
-npm run build   # or `npm run dev` for hot reload
-php artisan serve
-```
-
-### Running tests
-
-Tests run against a dedicated PostgreSQL database (`biasharaos_testing`) to match
-the production database engine exactly — see `phpunit.xml`.
-
-```bash
-createdb -O biasharaos biasharaos_testing
-php artisan test
-```
-
-## Multi-tenancy
-
-Every business-scoped table carries a `business_id`. Tenant isolation is enforced
-at the query level via the `BelongsToTenant` Eloquent trait (global scope), not by
-convention in controllers. Platform Super Admins (`platform_users` table, `platform`
-guard) bypass tenant scoping; everyone else is automatically restricted to their own
-business's data.
-
-## Documentation
-
-See `CHANGELOG.md` for sprint-by-sprint history of what shipped and why.
+- Setting up locally: `backend/README.md` (Laravel/API/web) and `desktop-app/README.md`
+  (Flutter client).
+- Product/architecture decisions: `docs/ADR/` — start with `0001-consolidation.md`.
+- Sprint-by-sprint history of what shipped and why: `CHANGELOG.md`.

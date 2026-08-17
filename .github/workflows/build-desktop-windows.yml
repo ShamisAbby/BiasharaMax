@@ -1,0 +1,61 @@
+name: Build Windows desktop client
+
+# Flutter's Windows target compiles native runner code via MSVC — there is
+# no Linux-to-Windows cross-compile path, so this has to run on an actual
+# Windows machine. `windows-latest` GitHub-hosted runners ship Visual
+# Studio Build Tools with the C++ desktop workload already installed,
+# which is the only non-Flutter prerequisite `flutter build windows` needs.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop-app/**"
+      - ".github/workflows/build-desktop-windows.yml"
+  pull_request:
+    paths:
+      - "desktop-app/**"
+  workflow_dispatch: {}
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter config --enable-windows-desktop
+
+      # The windows/ native runner folder (CMakeLists.txt, runner/main.cpp,
+      # etc.) isn't committed to the repo — it's SDK-version-generated
+      # boilerplate, not hand-maintained source, and no Flutter SDK was
+      # available when this project was first scaffolded to generate it
+      # once and commit it. Safe to run against an existing pubspec.yaml +
+      # lib/: it only fills in what's missing, same as local setup (see
+      # flutter_desktop_client/README.md).
+      - run: flutter create --platforms=windows .
+
+      - run: flutter pub get
+
+      # Generates lib/data/local/database.g.dart (Drift codegen) — the
+      # local dev README calls this out as a required setup step; CI needs
+      # it too, since it's git-ignored, not committed.
+      - run: dart run build_runner build --delete-conflicting-outputs
+
+      - run: flutter build windows --release
+
+      # `flutter build windows` produces an .exe plus the DLLs and the
+      # `data/` asset folder it needs alongside it — not a single portable
+      # file. All of it has to ship together, so the artifact is the whole
+      # Release folder, zipped by upload-artifact automatically.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: biasharamax-desktop-windows
+          path: desktop-app/build/windows/x64/runner/Release/
+          if-no-files-found: error

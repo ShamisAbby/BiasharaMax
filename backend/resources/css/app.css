@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Full-screen section snapping for the public landing page.
+ *
+ * Applied to <html> by the page itself and removed on unmount, rather than
+ * set globally — this is a marketing-page treatment and would be actively
+ * hostile inside the dashboard, where people scroll through long tables.
+ *
+ * It lives on the document rather than on a wrapping scroll container so
+ * that ordinary window scrolling still works. A wrapper with its own
+ * `overflow-y-scroll` would silently break every `window.scrollY` listener
+ * on the page, the sticky header's scrolled state among them.
+ */
+.snap-page {
+    scroll-snap-type: y mandatory;
+}
+
+/**
+ * Two cases where snapping is worse than not snapping, both opt-out by
+ * default rather than by preference toggle.
+ *
+ * Touch devices: mandatory snap fights momentum scrolling, and a flick
+ * that would naturally carry two screens gets yanked back to one. It also
+ * makes a section taller than the viewport genuinely hard to reach.
+ *
+ * Reduced motion: snapping is involuntary movement the visitor did not
+ * ask for, which is the whole category that preference exists to disable.
+ */
+@media (pointer: coarse) {
+    .snap-page {
+        scroll-snap-type: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .snap-page {
+        scroll-snap-type: none;
+    }
+}
+
+/**
+ * Short windows give up snapping entirely.
+ *
+ * Below this height the sections cannot hold their content at one screen
+ * each, so they grow past the viewport (see `min-h-[600px]` on the section
+ * wrapper). Snapping to the top of a section taller than the screen strands
+ * whatever sits at its bottom — the visitor scrolls, gets pulled back, and
+ * never reaches it.
+ */
+@media (max-height: 600px) {
+    .snap-page {
+        scroll-snap-type: none;
+    }
+}

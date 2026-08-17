@@ -1,0 +1,64 @@
+version: "3.8"
+
+# Local/dev infrastructure for backend/. Targets MySQL 8 per
+# docs/ADR/0001-consolidation.md. As of 2026-08-04, backend/.env and phpunit.xml
+# both point at MySQL (127.0.0.1:3306, database `biasharamax`/`biasharaos_testing`,
+# user `biasharamax`) — matching this compose file's `db` service credentials, but
+# assuming a native/local MySQL 8 install rather than this compose stack (the app
+# was being run directly, not via `docker compose up`). If you *do* want to run
+# via this compose file instead, the `db` service's exposed port (3306:3306) and
+# credentials already match what .env/phpunit.xml expect, so no further changes
+# should be needed — just remember `biasharaos_testing` doesn't exist until you
+# create it (`CREATE DATABASE biasharaos_testing;`), since phpunit.xml uses a
+# separate database from the main app's.
+
+services:
+  app:
+    build:
+      context: ../backend
+      dockerfile: ../docker/php/Dockerfile
+    working_dir: /var/www/html
+    volumes:
+      - ../backend:/var/www/html
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=biasharamax
+      - DB_USERNAME=biasharamax
+      - DB_PASSWORD=biasharaos_dev_pw
+      - REDIS_HOST=redis
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - ../backend:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      - MYSQL_DATABASE=biasharamax
+      - MYSQL_USER=biasharamax
+      - MYSQL_PASSWORD=biasharaos_dev_pw
+      - MYSQL_ROOT_PASSWORD=root_dev_pw
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  db_data:

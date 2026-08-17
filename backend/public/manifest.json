@@ -1,0 +1,40 @@
+{
+    "name": "BiasharaMax",
+    "short_name": "BiasharaMax",
+    "description": "Business Management System",
+    "start_url": "/onboarding",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#ffffff",
+    "theme_color": "#4f46e5",
+    "scope": "/",
+    "lang": "en",
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [],
+    "categories": ["business", "finance", "productivity"],
+    "shortcuts": [
+        {
+            "name": "Dashboard",
+            "url": "/dashboard",
+            "description": "Business Dashboard"
+        },
+        {
+            "name": "Point of Sale",
+            "url": "/sales/pos",
+            "description": "Open POS"
+        }
+    ]
+}

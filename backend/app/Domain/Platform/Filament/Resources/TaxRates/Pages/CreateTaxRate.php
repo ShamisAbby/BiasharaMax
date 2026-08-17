@@ -1,0 +1,11 @@
+<?php
+
+namespace App\Domain\Platform\Filament\Resources\TaxRates\Pages;
+
+use App\Domain\Platform\Filament\Resources\TaxRates\TaxRateResource;
+use Filament\Resources\Pages\CreateRecord;
+
+class CreateTaxRate extends CreateRecord
+{
+    protected static string $resource = TaxRateResource::class;
+}
