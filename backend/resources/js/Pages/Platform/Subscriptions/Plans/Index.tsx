@@ -19,6 +19,9 @@ interface PlanRow {
     slug: string;
     type: 'standard' | 'enterprise';
     description: string | null;
+    duration_months: number | null;
+    /** Total for the whole term — what the customer is charged. */
+    price: string | null;
     price_monthly: string;
     price_quarterly: string;
     price_yearly: string;
@@ -47,6 +50,8 @@ const EMPTY_FORM = {
     slug: '',
     type: 'standard' as 'standard' | 'enterprise',
     description: '',
+    duration_months: '3',
+    price: '0',
     price_monthly: '0',
     price_quarterly: '0',
     price_yearly: '0',
@@ -94,6 +99,8 @@ export default function SubscriptionPlansIndex({
             slug: plan.slug,
             type: plan.type,
             description: plan.description ?? '',
+            duration_months: String(plan.duration_months ?? 3),
+            price: plan.price ?? plan.price_monthly,
             price_monthly: plan.price_monthly,
             price_quarterly: plan.price_quarterly,
             price_yearly: plan.price_yearly,
@@ -197,11 +204,18 @@ export default function SubscriptionPlansIndex({
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                             {plan.description}
                         </p>
+                        {/*
+                            The total for the term, matching what the
+                            renewal page quotes. This card used to show
+                            `price_monthly` while the customer was shown
+                            `price` — two numbers for one plan, and the
+                            operator only ever saw one of them.
+                        */}
                         <p className="mt-3 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                            {formatCurrency(plan.price_monthly)}
+                            {formatCurrency(plan.price ?? plan.price_monthly)}
                             <span className="text-sm font-normal text-gray-500">
                                 {' '}
-                                /mo
+                                / {plan.duration_months ?? '?'} months
                             </span>
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -326,59 +340,44 @@ export default function SubscriptionPlansIndex({
                         />
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Monthly price
+                                Length (months)
                             </label>
                             <TextInput
                                 type="number"
+                                min="1"
                                 className="mt-1 block w-full"
-                                value={data.price_monthly}
+                                value={data.duration_months}
                                 onChange={(e) =>
-                                    setData('price_monthly', e.target.value)
+                                    setData('duration_months', e.target.value)
                                 }
                             />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                How long one purchase lasts. Shown to the
+                                customer as "N months of full access".
+                            </p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Quarterly price
+                                Price for the whole term (TZS)
                             </label>
                             <TextInput
                                 type="number"
+                                min="0"
                                 className="mt-1 block w-full"
-                                value={data.price_quarterly}
+                                value={data.price}
                                 onChange={(e) =>
-                                    setData('price_quarterly', e.target.value)
+                                    setData('price', e.target.value)
                                 }
                             />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Yearly price
-                            </label>
-                            <TextInput
-                                type="number"
-                                className="mt-1 block w-full"
-                                value={data.price_yearly}
-                                onChange={(e) =>
-                                    setData('price_yearly', e.target.value)
-                                }
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Lifetime price
-                            </label>
-                            <TextInput
-                                type="number"
-                                className="mt-1 block w-full"
-                                value={data.price_lifetime}
-                                onChange={(e) =>
-                                    setData('price_lifetime', e.target.value)
-                                }
-                                placeholder="Leave blank if unsupported"
-                            />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Charged once, up front. The monthly, quarterly
+                                and yearly columns are derived from this — no
+                                longer entered by hand, so they cannot drift out
+                                of step with what customers are quoted.
+                            </p>
                         </div>
                     </div>
 

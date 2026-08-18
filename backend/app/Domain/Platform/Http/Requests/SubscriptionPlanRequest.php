@@ -29,9 +29,23 @@ class SubscriptionPlanRequest extends FormRequest
             'slug' => ['required', 'string', 'max:255', Rule::unique('subscription_plans', 'slug')->ignore($planId)],
             'type' => ['required', 'in:standard,enterprise'],
             'description' => ['nullable', 'string'],
-            'price_monthly' => ['required', 'numeric', 'min:0'],
-            'price_quarterly' => ['required', 'numeric', 'min:0'],
-            'price_yearly' => ['required', 'numeric', 'min:0'],
+            // The two fields the product is actually sold on. They were
+            // added to the table by migration and never to this form, so
+            // the only writer was the seeder: an operator could rename a
+            // plan and edit its monthly price all day while the customer's
+            // renewal page — which reads `price` and `duration_months` —
+            // showed the seeded values unchanged. Renaming "3 Months" to
+            // "6 Months" left it three months long at the three-month
+            // price, under a label promising six.
+            'duration_months' => ['required', 'integer', 'min:1', 'max:60'],
+            'price' => ['required', 'numeric', 'min:0'],
+
+            // Legacy, and no longer set by hand — derived from the two
+            // above in the controller. Kept nullable rather than dropped
+            // because existing subscriptions still read them.
+            'price_monthly' => ['nullable', 'numeric', 'min:0'],
+            'price_quarterly' => ['nullable', 'numeric', 'min:0'],
+            'price_yearly' => ['nullable', 'numeric', 'min:0'],
             'price_lifetime' => ['nullable', 'numeric', 'min:0'],
             'trial_days' => ['required', 'integer', 'min:0'],
             'features' => ['nullable', 'array'],

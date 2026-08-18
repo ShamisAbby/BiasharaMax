@@ -26,16 +26,42 @@ class SubscriptionPlanController extends Controller
 
     public function store(SubscriptionPlanRequest $request): RedirectResponse
     {
-        SubscriptionPlan::query()->create($request->validated());
+        SubscriptionPlan::query()->create($this->withDerivedPrices($request->validated()));
 
         return back()->with('status', 'plan-created');
     }
 
     public function update(SubscriptionPlanRequest $request, SubscriptionPlan $plan): RedirectResponse
     {
-        $plan->update($request->validated());
+        $plan->update($this->withDerivedPrices($request->validated()));
 
         return back()->with('status', 'plan-updated');
+    }
+
+    /**
+     * Keep the legacy price columns in step with the real one.
+     *
+     * `price` and `duration_months` are what the product is sold on;
+     * `price_monthly`, `price_quarterly` and `price_yearly` predate that
+     * and are still read by `priceFor()` and by older subscription rows.
+     *
+     * Derived rather than typed in. Asking an operator to keep four
+     * numbers consistent by hand guarantees they eventually will not, and
+     * the first sign would be an invoice nobody could explain.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withDerivedPrices(array $data): array
+    {
+        $months = max(1, (int) ($data['duration_months'] ?? 1));
+        $price = (float) ($data['price'] ?? 0);
+
+        $data['price_monthly'] = round($price / $months, 2);
+        $data['price_quarterly'] = $months === 3 ? $price : 0;
+        $data['price_yearly'] = $months === 12 ? $price : 0;
+
+        return $data;
     }
 
     public function destroy(SubscriptionPlan $plan): RedirectResponse
