@@ -52,8 +52,12 @@ class SubscriptionService
      */
     public function startPendingPayment(Business $business, SubscriptionPlan $plan): Subscription
     {
+        // `expired`, not `trial`. A business that has never paid and never
+        // trialled is not on a trial, and labelling it one put a third
+        // wrong word in this column — the admin list would show "Trial"
+        // for an account that had been offered nothing.
         $business->forceFill([
-            'status' => Business::STATUS_TRIAL,
+            'status' => Business::STATUS_EXPIRED,
             'trial_ends_at' => null,
         ])->save();
 
