@@ -87,6 +87,11 @@ class SubscriptionCheckoutService
                 'last_name' => Str::after((string) $business->owner?->name, ' '),
                 'business_id' => $business->getKey(),
                 'subscription_id' => $subscription->getKey(),
+                // Who asked for this. `created_by` cannot hold it — that
+                // column is foreign-keyed to `platform_users` and this is a
+                // vendor — so the attribution lives here instead of being
+                // lost.
+                'initiated_by_user_id' => $business->owner?->getKey(),
                 'plan_id' => $plan->getKey(),
                 'redirect_url' => route('plan.expired'),
                 'cancel_url' => route('plan.expired'),

@@ -211,6 +211,17 @@ class PaymentTransaction extends Model
     /**
      * @return array<string, string>
      */
+    /**
+     * `created_by`, `updated_by` and `initiated_by` are all foreign-keyed
+     * to `platform_users` (see the create migration), so only a platform
+     * admin may be stamped here. A vendor paying for their own
+     * subscription is recorded in `metadata` instead.
+     */
+    protected static function userstampGuard(): ?string
+    {
+        return 'platform';
+    }
+
     protected function moneyMinorColumns(): array
     {
         return [
