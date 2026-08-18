@@ -1,1 +1,0 @@
-import{e as c,r as u}from"./app-DbwvbxWl.js";function i(n){const{notify:o}=c(),t=u.useRef(null);u.useEffect(()=>{const e=Object.values(n).filter(r=>!!r);if(e.length===0){t.current=null;return}const s=e.join("|");s!==t.current&&(t.current=s,[...new Set(e)].forEach(r=>o(r,"error")))},[n,o])}export{i as u};
