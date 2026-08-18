@@ -25,6 +25,13 @@ export default function UpdateProfileInformation({
             name: user.name,
             username: user.username ?? '',
             email: user.email,
+            // The backend has accepted `phone` since the 2026_08_06
+            // migration and `ProfileUpdateRequest` validates it — the form
+            // simply never rendered the field. So the one detail a vendor
+            // gives at signup and most often needs to correct was the one
+            // they could not reach, and mobile-money checkout reads exactly
+            // this column.
+            phone: user.phone ?? '',
         });
 
     const avatarForm = useForm<{ avatar: File | null }>({ avatar: null });
@@ -150,6 +157,28 @@ export default function UpdateProfileInformation({
                         autoComplete="email"
                     />
                     <InputError className="mt-2" message={errors.email} />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="phone" value="Phone number" />
+
+                    <TextInput
+                        id="phone"
+                        type="tel"
+                        inputMode="tel"
+                        className="mt-1 block w-full"
+                        value={data.phone}
+                        onChange={(e) => setData('phone', e.target.value)}
+                        autoComplete="tel"
+                        placeholder="07XX XXX XXX"
+                    />
+
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Used for mobile money payments and account recovery.
+                        Tanzanian numbers in 07… or +255… form.
+                    </p>
+
+                    <InputError className="mt-2" message={errors.phone} />
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
