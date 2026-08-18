@@ -59,6 +59,18 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureFrontendRequestsAreStateful::class,
         ]);
 
+        // Server-to-server POSTs carry no session and therefore no CSRF
+        // token. Without this exclusion every Snippe webhook is rejected
+        // with a 419 before the controller runs — and Snippe retries five
+        // times into the same wall, so the symptom is "payments never
+        // confirm" with nothing in the application log to say why.
+        //
+        // Safe because the endpoint authenticates by HMAC signature
+        // instead: see SnippeSignatureVerifier.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/snippe',
+        ]);
+
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
             'permission' => EnsureUserHasPermission::class,

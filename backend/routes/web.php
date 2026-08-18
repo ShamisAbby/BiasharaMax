@@ -118,6 +118,21 @@ Route::middleware('guest')->group(function () {
     Route::get('/onboarding', fn () => Inertia::render('Onboarding'))->name('onboarding');
     Route::get('/register/license', [App\Domain\Business\Http\Controllers\BusinessRegistrationController::class, 'createWithCode'])->name('register.license');
 });
+/*
+ * Snippe payment webhook.
+ *
+ * Public and unauthenticated by necessity — Snippe's servers call it, not a
+ * logged-in browser. The HMAC signature is the only thing authorising it,
+ * which is why the verifier refuses anything without a fresh timestamp.
+ *
+ * CSRF-exempt: see `bootstrap/app.php`, where the path is excluded. A CSRF
+ * token cannot exist on a server-to-server POST, so without that exclusion
+ * every webhook would be rejected with a 419 and Snippe would retry five
+ * times into the same wall.
+ */
+Route::post('/webhooks/snippe', App\Domain\Finance\Http\Controllers\SnippeWebhookController::class)
+    ->name('webhooks.snippe');
+
 Route::post('/registration-codes/validate', App\Domain\Subscription\Http\Controllers\RegistrationCodeValidationController::class)->name('registration-codes.validate');
 
 /*
