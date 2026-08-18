@@ -1607,8 +1607,18 @@ export default function Welcome({
                                           and that button is the only
                                           reason this section exists.
                                         */}
+                                        {/*
+                                            `features` is a nullable JSON
+                                            column. A plan saved without any
+                                            arrives as null, and reading
+                                            `.slice`/`.length` on it takes
+                                            the entire landing page down —
+                                            the public one, for every
+                                            visitor, not just the customer
+                                            who owns that plan.
+                                        */}
                                         <ul className="mt-4 space-y-2">
-                                            {plan.features
+                                            {(plan.features ?? [])
                                                 .slice(0, PLAN_FEATURE_LIMIT)
                                                 .map((feature) => (
                                                     <li
@@ -1623,13 +1633,13 @@ export default function Welcome({
                                                 ))}
                                         </ul>
 
-                                        {plan.features.length >
+                                        {(plan.features ?? []).length >
                                             PLAN_FEATURE_LIMIT && (
                                             <p
                                                 className={`mt-2 font-medium text-indigo-600 dark:text-indigo-400 ${TYPE.meta}`}
                                             >
                                                 +{' '}
-                                                {plan.features.length -
+                                                {(plan.features ?? []).length -
                                                     PLAN_FEATURE_LIMIT}{' '}
                                                 more
                                             </p>

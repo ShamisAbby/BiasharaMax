@@ -26,8 +26,8 @@ class BusinessRegistrationController extends Controller
         return Inertia::render('Auth/Register', [
             'plans' => SubscriptionPlan::query()
                 ->where('is_active', true)
-                ->orderBy('sort_order')
-                ->get(['id', 'name', 'slug', 'description', 'price_monthly', 'price_quarterly', 'price_yearly', 'trial_days', 'features']),
+                ->orderBy('duration_months')
+                ->get(['id', 'name', 'slug', 'description', 'duration_months', 'price', 'price_monthly', 'price_quarterly', 'price_yearly', 'trial_days', 'features']),
             'businessTypes' => BusinessType::query()
                 ->where('status', BusinessType::STATUS_ACTIVE)
                 ->orderBy('sort_order')

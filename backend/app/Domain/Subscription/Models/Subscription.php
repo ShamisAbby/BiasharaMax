@@ -18,6 +18,20 @@ class Subscription extends Model
 {
     use Auditable, HasUserstamps, HasUuids, SyncsMoneyMinorColumns;
 
+    /**
+     * Chosen a paid plan, not yet paid for it.
+     *
+     * A distinct state rather than an absent subscription, because the
+     * business, its owner and its default roles all exist by this point —
+     * only the money is missing. Treated as locked below, so a customer
+     * who abandons checkout gets no access rather than a free run.
+     *
+     * Fits the column: `subscriptions.status` is varchar(20) and this is
+     * 15 characters. A longer name would be silently truncated by MySQL in
+     * non-strict mode and then never match a comparison again.
+     */
+    public const STATUS_PENDING_PAYMENT = 'pending_payment';
+
     public const STATUS_TRIALING = 'trialing';
 
     public const STATUS_ACTIVE = 'active';
@@ -101,6 +115,13 @@ class Subscription extends Model
     public function isLocked(): bool
     {
         if (in_array($this->status, [self::STATUS_SUSPENDED, self::STATUS_CANCELED], true)) {
+            return true;
+        }
+
+        // Locked until the payment lands. This is the whole reason the
+        // state exists: without it, a paid signup that never completes
+        // checkout is indistinguishable from a paid one.
+        if ($this->status === self::STATUS_PENDING_PAYMENT) {
             return true;
         }
 

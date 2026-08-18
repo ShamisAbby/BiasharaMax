@@ -26,6 +26,8 @@ class SubscriptionPlan extends Model
         'slug',
         'type',
         'description',
+        'duration_months',
+        'price',
         'price_monthly',
         'price_monthly_minor',
         'price_quarterly',
@@ -56,6 +58,8 @@ class SubscriptionPlan extends Model
     protected function casts(): array
     {
         return [
+            'duration_months' => 'integer',
+            'price' => 'decimal:2',
             'price_monthly' => 'decimal:2',
             'price_monthly_minor' => 'integer',
             'price_quarterly' => 'decimal:2',

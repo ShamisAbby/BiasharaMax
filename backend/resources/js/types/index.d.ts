@@ -22,16 +22,27 @@ export interface SubscriptionPlan {
     name: string;
     slug: string;
     description: string | null;
+    /** 3, 6 or 12. Null on the retired tier plans. */
+    duration_months: number | null;
+    /** Total for the whole term, not a monthly rate. */
+    price: string | null;
     price_monthly: string;
     price_quarterly: string;
     price_yearly: string;
     trial_days: number;
-    features: string[];
+    features: string[] | null;
 }
 
 export interface Subscription {
     id: string;
-    status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired';
+    status:
+        | 'pending_payment'
+        | 'trialing'
+        | 'active'
+        | 'past_due'
+        | 'canceled'
+        | 'expired'
+        | 'suspended';
     billing_cycle: 'monthly' | 'quarterly' | 'yearly' | null;
     trial_ends_at: string | null;
     current_period_start: string | null;

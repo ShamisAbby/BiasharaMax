@@ -38,6 +38,59 @@ class SubscriptionService
     }
 
     /**
+     * A paid plan chosen but not yet paid for.
+     *
+     * Deliberately grants nothing. The business exists so the customer can
+     * return to a real account after paying, but every gate treats this as
+     * locked until a confirmed payment moves it to active — see
+     * `Subscription::isLocked()`.
+     *
+     * `current_period_end` is left null on purpose: the term starts when
+     * the money arrives, not when the form was submitted. Dating it from
+     * signup would quietly shorten the plan by however long the customer
+     * took to pay.
+     */
+    public function startPendingPayment(Business $business, SubscriptionPlan $plan): Subscription
+    {
+        $business->forceFill([
+            'status' => Business::STATUS_TRIAL,
+            'trial_ends_at' => null,
+        ])->save();
+
+        return Subscription::query()->create([
+            'business_id' => $business->getKey(),
+            'subscription_plan_id' => $plan->getKey(),
+            'status' => Subscription::STATUS_PENDING_PAYMENT,
+            'billing_cycle' => null,
+            'trial_ends_at' => null,
+        ]);
+    }
+
+    /**
+     * Turn a paid-for plan on, once payment is confirmed.
+     *
+     * The term is measured from now rather than from signup, and its
+     * length comes from the plan itself — a 3, 6 or 12-month purchase.
+     */
+    public function activateAfterPayment(Subscription $subscription): Subscription
+    {
+        $months = $subscription->plan?->duration_months ?? 12;
+
+        $subscription->forceFill([
+            'status' => Subscription::STATUS_ACTIVE,
+            'current_period_start' => Carbon::now(),
+            'current_period_end' => Carbon::now()->addMonths($months),
+            'grace_period_ends_at' => null,
+        ])->save();
+
+        $subscription->business?->forceFill([
+            'status' => Business::STATUS_ACTIVE,
+        ])->save();
+
+        return $subscription;
+    }
+
+    /**
      * Whether the business should currently be let in — true during an
      * active billing/trial period AND during the 7-day grace window after
      * it lapses, false once the subscription is genuinely locked.

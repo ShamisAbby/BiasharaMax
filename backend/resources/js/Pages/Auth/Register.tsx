@@ -35,7 +35,11 @@ export default function Register({
         owner_phone: '',
         password: '',
         password_confirmation: '',
-        subscription_plan_id: plans[0]?.id ?? '',
+        // Trial is the default. It is the only option that cannot fail
+        // at checkout, so it is the safest landing state if someone
+        // submits without reading this section.
+        start_trial: true as boolean,
+        subscription_plan_id: '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -264,12 +268,57 @@ export default function Register({
 
                 <fieldset className="space-y-4 border-t border-gray-100 pt-8 dark:border-gray-700">
                     <legend className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
-                        Choose a plan
+                        Choose how to start
                     </legend>
+
+                    {/*
+                        The trial sits apart from the paid plans rather than
+                        as a fourth card among them. They are different
+                        kinds of thing — one opens the account immediately,
+                        the others require payment first — and a row of four
+                        look-alike cards hides that difference at exactly
+                        the moment the customer is deciding.
+                    */}
+                    <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${
+                            data.start_trial
+                                ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500 dark:bg-emerald-900/20'
+                                : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
+                        }`}
+                    >
+                        <input
+                            type="radio"
+                            name="start_choice"
+                            checked={data.start_trial}
+                            onChange={() => {
+                                setData('start_trial', true);
+                                setData('subscription_plan_id', '');
+                            }}
+                            className="sr-only"
+                        />
+                        {data.start_trial && (
+                            <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                        )}
+                        <div>
+                            <div className="font-semibold text-gray-900 dark:text-gray-100">
+                                Free trial — 30 days
+                            </div>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Full access, no payment now. After 30 days you
+                                will need to buy one of the plans below to keep
+                                using the account.
+                            </p>
+                        </div>
+                    </label>
+
+                    <p className="pt-2 text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                        Or pay now
+                    </p>
 
                     <div className="grid gap-3 sm:grid-cols-3">
                         {plans.map((plan) => {
                             const selected =
+                                !data.start_trial &&
                                 data.subscription_plan_id === plan.id;
 
                             return (
@@ -286,12 +335,13 @@ export default function Register({
                                         name="subscription_plan_id"
                                         value={plan.id}
                                         checked={selected}
-                                        onChange={() =>
+                                        onChange={() => {
+                                            setData('start_trial', false);
                                             setData(
                                                 'subscription_plan_id',
                                                 plan.id,
-                                            )
-                                        }
+                                            );
+                                        }}
                                         className="sr-only"
                                     />
                                     {selected && (
@@ -300,11 +350,23 @@ export default function Register({
                                     <div className="font-semibold text-gray-900 dark:text-gray-100">
                                         {plan.name}
                                     </div>
+                                    {/*
+                                        The total for the term, not a
+                                        monthly rate. These are not
+                                        subscriptions that bill monthly —
+                                        the customer pays this figure once,
+                                        up front, so showing a per-month
+                                        number would understate what is
+                                        about to be charged.
+                                    */}
                                     <div className="mt-1 text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                                        TZS {formatCurrency(plan.price_monthly)}
+                                        TZS{' '}
+                                        {formatCurrency(
+                                            plan.price ?? plan.price_monthly,
+                                        )}
                                         <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
                                             {' '}
-                                            /mo
+                                            total
                                         </span>
                                     </div>
                                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -318,6 +380,15 @@ export default function Register({
                         message={errors.subscription_plan_id}
                         className="mt-2"
                     />
+                    <InputError message={errors.start_trial} className="mt-2" />
+
+                    {!data.start_trial && (
+                        <p className="rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                            Your account opens once payment is confirmed. You
+                            will be taken to a secure checkout page after
+                            signing up.
+                        </p>
+                    )}
                 </fieldset>
 
                 <div className="flex items-center justify-between border-t border-gray-100 pt-6 dark:border-gray-700">

@@ -109,9 +109,34 @@ class BusinessRegistrationService
                     'used_by' => $business->getKey(),
                     'used_at' => now(),
                 ]);
-            } else {
-                $plan = SubscriptionPlan::query()->findOrFail($data['subscription_plan_id']);
+            } elseif (! empty($data['start_trial'])) {
+                // The trial still needs a plan row to point at, because
+                // `subscriptions.subscription_plan_id` is a foreign key.
+                // Which one no longer affects what the customer gets — the
+                // three plans differ only in length and price — so this
+                // takes the shortest, and the choice is recorded here so
+                // nobody later reads meaning into it.
+                $plan = SubscriptionPlan::query()
+                    ->where('is_active', true)
+                    ->orderBy('duration_months')
+                    ->firstOrFail();
+
                 $this->subscriptionService->startTrial($business, $plan);
+            } else {
+                $plan = SubscriptionPlan::query()
+                    ->where('is_active', true)
+                    ->findOrFail($data['subscription_plan_id']);
+
+                // Created unpaid and locked. Access opens when the payment
+                // is confirmed, not when the form is submitted.
+                //
+                // This is the branch that used to call `startTrial()` no
+                // matter what the customer picked — so choosing a paid
+                // plan handed out 30 free days and recorded a trial. It
+                // looked correct from both sides: the customer got in, and
+                // the database said "trialing" as though that had been the
+                // request.
+                $this->subscriptionService->startPendingPayment($business, $plan);
             }
 
             $this->chartOfAccountsService->seedDefaults($business->getKey());

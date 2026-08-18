@@ -49,10 +49,22 @@ class BusinessRegistrationRequest extends FormRequest
                 'string',
                 Rule::exists(RegistrationCode::class, 'code')->where('status', RegistrationCode::STATUS_AVAILABLE),
             ],
+            // Which of the two routes into the product this is.
+            //
+            // The trial and a paid plan are genuinely different things, so
+            // the form says which rather than letting the backend infer it
+            // from whether a plan was chosen. Inference is what allows a
+            // paid signup with a missing plan id to quietly become a free
+            // trial — the failure mode where the mistake is invisible
+            // because the customer is happy and only the revenue is wrong.
+            'start_trial' => ['required', 'boolean'],
+
             'subscription_plan_id' => [
-                $this->filled('registration_code') ? 'nullable' : 'required',
+                // Required unless this is a trial or a pre-paid
+                // registration code, both of which name no plan.
+                ($this->boolean('start_trial') || $this->filled('registration_code')) ? 'nullable' : 'required',
                 'uuid',
-                'exists:'.SubscriptionPlan::class.',id',
+                Rule::exists(SubscriptionPlan::class, 'id')->where('is_active', true),
             ],
         ];
     }
