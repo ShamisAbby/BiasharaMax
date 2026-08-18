@@ -108,10 +108,27 @@ class SubscriptionCheckoutService
                 'raw' => $result['raw'] ?? null,
             ]);
 
+            // Snippe's own words, not mine.
+            //
+            // The first version of this returned "We could not start the
+            // payment" for everything. Snippe had actually said
+            // "unsupported mobile carrier" — which tells the customer the
+            // number is wrong and they can fix it — and that got discarded
+            // in favour of a sentence that gives them nothing to act on.
+            //
+            // Prefixed so it is clear the message comes from the payment
+            // provider rather than from us, and length-capped so a verbose
+            // upstream error cannot become the whole page.
+            $reason = is_string($result['raw']['message'] ?? null)
+                ? Str::limit(trim($result['raw']['message']), 120)
+                : null;
+
             return [
                 'ok' => false,
                 'checkout_url' => null,
-                'message' => 'We could not start the payment. Please try again, or contact us.',
+                'message' => $reason !== null
+                    ? "Payment could not start: {$reason}."
+                    : 'We could not start the payment. Please try again, or contact us.',
             ];
         }
 
