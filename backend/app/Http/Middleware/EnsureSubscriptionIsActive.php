@@ -32,6 +32,31 @@ class EnsureSubscriptionIsActive
             return $next($request);
         }
 
+        // XHR gets an answer, not a redirect to a web page.
+        //
+        // Everything under this gate includes JSON endpoints the app polls
+        // in the background — `notifications.index` runs every 30 seconds
+        // on every screen. Redirecting those meant axios followed the 302
+        // and received the *HTML of the subscription page*, which the
+        // caller then read as JSON. The notification bell stored
+        // `data.notifications` (undefined), rendered `.length` on it, and
+        // blanked the entire application the moment a subscription lapsed.
+        //
+        // A redirect is an answer to "which page should I show". It is not
+        // an answer to "what are this user's notifications", and sending
+        // one to a caller that asked for JSON guarantees the failure shows
+        // up somewhere far away from here.
+        if ($request->expectsJson() && ! $request->header('X-Inertia')) {
+            return response()->json([
+                'message' => $business->isBlockedByPlatform()
+                    ? 'This business is suspended.'
+                    : 'This subscription is not active.',
+                'reason' => $business->isBlockedByPlatform()
+                    ? 'business_suspended'
+                    : 'subscription_locked',
+            ], 402); // Payment Required.
+        }
+
         // Two different situations, two different destinations.
         //
         // A suspension is not a billing state. Sending a suspended owner

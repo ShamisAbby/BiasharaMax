@@ -37,11 +37,43 @@ export default function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [loaded, setLoaded] = useState(false);
 
+    /**
+     * Trusts nothing about the response, and never fails loudly.
+     *
+     * `notifications.index` lives inside the `subscription.active`
+     * middleware group. When a subscription expires, that gate redirects —
+     * including this XHR — so axios quietly follows the 302 and hands back
+     * the *HTML of the subscription page*. `data.notifications` is then
+     * undefined, and the old code assigned it to state and set `loaded`
+     * anyway. The next render did `notifications.length` and took down the
+     * whole screen.
+     *
+     * The result was a page that broke precisely when the customer's
+     * subscription lapsed — the one moment the app most needs to explain
+     * itself — and the error named a property with no hint of a redirect,
+     * a subscription, or a poller that runs every 30 seconds on every
+     * page.
+     *
+     * Two habits, both cheap: check the shape rather than assume it, and
+     * do not let a background poller throw. A bell that silently shows
+     * nothing is a small loss; a bell that blanks the application is not.
+     */
     const fetchNotifications = useCallback(async () => {
-        const response = await window.axios.get(route('notifications.index'));
-        setNotifications(response.data.notifications);
-        setUnreadCount(response.data.unread_count);
-        setLoaded(true);
+        try {
+            const response = await window.axios.get(
+                route('notifications.index'),
+            );
+
+            const items = response?.data?.notifications;
+
+            setNotifications(Array.isArray(items) ? items : []);
+            setUnreadCount(Number(response?.data?.unread_count) || 0);
+            setLoaded(true);
+        } catch {
+            setNotifications([]);
+            setUnreadCount(0);
+            setLoaded(true);
+        }
     }, []);
 
     useEffect(() => {
