@@ -3,9 +3,9 @@
 namespace App\Domain\Finance\Http\Controllers;
 
 use App\Domain\Finance\Models\PaymentGateway;
+use App\Domain\Finance\Models\PaymentTransaction;
 use App\Domain\Finance\Support\SnippeSignatureVerifier;
-use App\Domain\Subscription\Models\Subscription;
-use App\Domain\Subscription\Services\SubscriptionService;
+use App\Domain\Subscription\Services\SubscriptionPaymentReconciler;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Log;
 class SnippeWebhookController extends Controller
 {
     public function __construct(
-        private readonly SubscriptionService $subscriptions,
+        private readonly SubscriptionPaymentReconciler $reconciler,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -102,42 +102,34 @@ class SnippeWebhookController extends Controller
             return response('OK', 200);
         }
 
-        $subscription = Subscription::query()
-            ->where('status', Subscription::STATUS_PENDING_PAYMENT)
-            ->whereHas('business', fn ($q) => $q->whereKey(data_get($data, 'metadata.business_id')))
-            ->first()
-            ?? Subscription::query()->whereKey(data_get($data, 'metadata.subscription_id'))->first();
+        // Resolved through our own transaction, not through whatever keys
+        // Snippe happens to echo back.
+        //
+        // The first version looked for `metadata.business_id` and
+        // `metadata.subscription_id`, which the driver never sent — so a
+        // valid webhook found nothing and returned 200 while the customer's
+        // money was gone. Our reference is on the payment either way, and
+        // the transaction knows which subscription it belongs to.
+        $transaction = PaymentTransaction::query()
+            ->where('reference_number', $reference)
+            ->orWhere('external_transaction_id', data_get($data, 'reference'))
+            ->orWhereKey(data_get($data, 'metadata.transaction_id'))
+            ->latest('created_at')
+            ->first();
 
-        if ($subscription === null) {
-            Log::warning('Snippe reported a completed payment with no matching pending subscription.', [
+        if ($transaction === null) {
+            Log::warning('Snippe reported a payment we have no transaction for.', [
                 'reference' => $reference,
             ]);
 
             return response('OK', 200);
         }
 
-        // Amount checked before anything is granted. Without this, a
-        // customer could pay for three months and be given twelve by
-        // sending a session for the cheaper plan and completing it against
-        // the more expensive one.
-        $paid = (float) (data_get($data, 'amount.value') ?? data_get($data, 'amount') ?? 0);
-        $expected = (float) ($subscription->plan?->price ?? 0);
+        $activated = $this->reconciler->settle($transaction, $data);
 
-        if ($expected > 0 && round($paid) < round($expected)) {
-            Log::warning('Snippe payment was short of the plan price; not activating.', [
-                'reference' => $reference,
-                'paid' => $paid,
-                'expected' => $expected,
-            ]);
-
-            return response('OK', 200);
-        }
-
-        $this->subscriptions->activateAfterPayment($subscription);
-
-        Log::info('Subscription activated by Snippe payment.', [
-            'subscription_id' => $subscription->getKey(),
-            'reference' => $reference,
+        Log::info('Snippe webhook processed.', [
+            'reference' => $transaction->reference_number,
+            'activated' => $activated,
         ]);
 
         return response('OK', 200);

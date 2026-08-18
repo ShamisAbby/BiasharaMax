@@ -2,7 +2,8 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import { formatCurrency } from '@/lib/currency';
 import { SubscriptionPlan } from '@/types';
 import { ClockIcon } from '@heroicons/react/24/outline';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 /**
  * Where a business goes when its plan runs out.
@@ -58,6 +59,73 @@ export default function PlanExpired({
         status === 'payment-failed' ||
         !!pendingPlanName;
 
+    const [checking, setChecking] = useState(false);
+
+    /**
+     * Ask the server whether the money has landed, every few seconds.
+     *
+     * Mobile money has no return trip: the customer approves a USSD prompt
+     * on the handset and the browser is never navigated anywhere. Without
+     * this the page simply sat there after a successful payment — which is
+     * exactly what happened, and from the customer's side is
+     * indistinguishable from having been charged for nothing.
+     *
+     * The endpoint asks the gateway, so this also recovers a webhook that
+     * never arrived rather than waiting on one forever.
+     */
+    useEffect(() => {
+        if (!awaitingPayment) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const poll = async () => {
+            try {
+                const response = await window.axios.get(
+                    route('subscription.payment-status'),
+                );
+
+                if (!cancelled && response?.data?.state === 'paid') {
+                    // A full visit, not a partial reload: the account has
+                    // just regained access and every shared prop — modules,
+                    // permissions, subscription — is now different.
+                    router.visit(route('dashboard'));
+                }
+            } catch {
+                // Silent by design. This runs every few seconds; a blocked
+                // or offline poll must not throw a banner at someone who is
+                // mid-payment.
+            }
+        };
+
+        void poll();
+        const interval = setInterval(poll, 5000);
+
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [awaitingPayment]);
+
+    const checkNow = async () => {
+        setChecking(true);
+
+        try {
+            const response = await window.axios.get(
+                route('subscription.payment-status'),
+            );
+
+            if (response?.data?.state === 'paid') {
+                router.visit(route('dashboard'));
+
+                return;
+            }
+        } finally {
+            setChecking(false);
+        }
+    };
+
     return (
         <>
             <Head title="Plan expired" />
@@ -110,6 +178,24 @@ export default function PlanExpired({
                                     {checkoutMessage ??
                                         'Your choice of plan has been recorded. Access returns as soon as payment clears.'}
                                 </p>
+
+                                {/*
+                                    A manual escape hatch beside the
+                                    automatic poll. If someone paid and
+                                    closed the tab, this is how they get
+                                    their account back without contacting
+                                    support.
+                                */}
+                                <button
+                                    type="button"
+                                    onClick={checkNow}
+                                    disabled={checking}
+                                    className="mt-3 rounded-lg border border-amber-400 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 disabled:opacity-60 dark:border-amber-500/40 dark:text-amber-200 dark:hover:bg-amber-500/20"
+                                >
+                                    {checking
+                                        ? 'Checking…'
+                                        : "I've paid — check now"}
+                                </button>
                             </div>
                         )}
 

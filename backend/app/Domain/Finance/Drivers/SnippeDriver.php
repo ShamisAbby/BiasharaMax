@@ -122,10 +122,31 @@ class SnippeDriver extends AbstractGatewayDriver
             // Our own identifiers travel with the payment and come back on
             // the webhook, so a completed payment can be matched without a
             // second API call.
-            'metadata' => [
-                'reference' => $transaction->reference_number,
-                'transaction_id' => (string) $transaction->getKey(),
-            ],
+            // The caller's own metadata travels too.
+            //
+            // This used to send only `reference` and `transaction_id`,
+            // while the webhook handler looked for `business_id` and
+            // `subscription_id` — keys that were never sent. A correctly
+            // signed, correctly delivered webhook therefore found no
+            // subscription, logged a warning and returned 200. The customer
+            // was debited and nothing happened, which is the worst outcome
+            // this system can produce.
+            //
+            // Merged rather than replaced so the two identifiers below are
+            // always present regardless of what the caller supplied.
+            'metadata' => array_merge(
+                array_filter(
+                    $transaction->metadata ?? [],
+                    // Only scalars — Snippe caps metadata at 50 keys of
+                    // string/number/boolean, and a nested array here is
+                    // rejected for the whole request.
+                    fn ($value) => is_scalar($value),
+                ),
+                [
+                    'reference' => $transaction->reference_number,
+                    'transaction_id' => (string) $transaction->getKey(),
+                ],
+            ),
             'customer' => array_filter([
                 'firstname' => $transaction->metadata['first_name'] ?? null,
                 'lastname' => $transaction->metadata['last_name'] ?? null,

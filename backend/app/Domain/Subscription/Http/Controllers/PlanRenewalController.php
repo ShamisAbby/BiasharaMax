@@ -3,7 +3,9 @@
 namespace App\Domain\Subscription\Http\Controllers;
 
 use App\Domain\Subscription\Models\SubscriptionPlan;
+use App\Domain\Finance\Models\PaymentTransaction;
 use App\Domain\Subscription\Services\SubscriptionCheckoutService;
+use App\Domain\Subscription\Services\SubscriptionPaymentReconciler;
 use App\Domain\Subscription\Services\SubscriptionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +26,50 @@ class PlanRenewalController extends Controller
     public function __construct(
         private readonly SubscriptionService $subscriptions,
         private readonly SubscriptionCheckoutService $checkout,
+        private readonly SubscriptionPaymentReconciler $reconciler,
     ) {}
+
+    /**
+     * "Have you got my money yet?"
+     *
+     * Polled by the expired-plan page while a payment is outstanding, and
+     * available as a button the customer can press. It asks the gateway
+     * rather than trusting anything local, so a webhook that never arrived
+     * — wrong signing secret, a deploy mid-flight, a firewall — stops being
+     * unrecoverable. Snippe gives up after five delivery attempts; without
+     * this the customer would be debited with no account and no way back
+     * except someone editing the database.
+     */
+    public function status(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $business = $request->user()?->business;
+
+        abort_if($business === null, 403);
+
+        $transaction = PaymentTransaction::query()
+            ->where('business_id', $business->getKey())
+            ->whereIn('status', [
+                PaymentTransaction::STATUS_PENDING,
+                PaymentTransaction::STATUS_PROCESSING,
+                PaymentTransaction::STATUS_SUCCESSFUL,
+            ])
+            ->latest('created_at')
+            ->first();
+
+        if ($transaction === null) {
+            return response()->json(['state' => 'none']);
+        }
+
+        $activated = $this->reconciler->refresh($transaction);
+
+        return response()->json([
+            'state' => $activated || $transaction->fresh()->status === PaymentTransaction::STATUS_SUCCESSFUL
+                ? 'paid'
+                : 'waiting',
+            'reference' => $transaction->reference_number,
+            'amount' => (float) $transaction->amount,
+        ]);
+    }
 
     public function show(Request $request): Response|HttpResponse
     {

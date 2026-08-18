@@ -164,6 +164,11 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/plan-expired/renew/{plan}', [App\Domain\Subscription\Http\Controllers\PlanRenewalController::class, 'renew'])
         ->name('subscription.renew');
+
+    // Polled while a payment is outstanding. Asks the gateway rather than
+    // waiting for a webhook that may never come.
+    Route::get('/plan-expired/status', [App\Domain\Subscription\Http\Controllers\PlanRenewalController::class, 'status'])
+        ->name('subscription.payment-status');
 });
 
 Route::middleware(['auth', 'verified', 'subscription.active'])->group(function () {
