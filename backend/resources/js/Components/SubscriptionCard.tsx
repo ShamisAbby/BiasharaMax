@@ -84,6 +84,15 @@ function formatDate(date: string): string {
     });
 }
 
+/**
+ * How far out the badge starts counting down.
+ *
+ * Deliberately the same number as the first reminder email. Two different
+ * thresholds for "your plan is ending soon" is how an interface ends up
+ * disagreeing with its own notifications.
+ */
+const RENEWAL_WINDOW_DAYS = 30;
+
 function plural(days: number): string {
     return days === 1 ? '1 day' : `${days} days`;
 }
@@ -127,6 +136,19 @@ export function presentSubscription(subscription: Subscription): Presentation {
                 countdown: true,
             };
         }
+
+        case 'pending_payment':
+            return {
+                tone: 'danger',
+                badge: 'Payment pending',
+                action: 'Complete payment',
+                // Says what is missing rather than what is wrong. Nothing
+                // has failed here — the customer picked a plan and has not
+                // paid yet, and telling them their account is "inactive"
+                // invites a support message instead of a payment.
+                note: 'Your plan starts once payment is confirmed.',
+                countdown: false,
+            };
 
         case 'past_due':
             return {
@@ -173,11 +195,19 @@ export function presentSubscription(subscription: Subscription): Presentation {
                 };
             }
 
-            if (remaining !== null && remaining <= 7) {
+            // Thirty days, matching the first reminder email rather than
+            // the seven days this used to use. The two disagreeing meant
+            // an owner could receive "your plan ends in 30 days" and then
+            // see a calm green "Active" badge in the app for three more
+            // weeks — the interface quietly contradicting the warning.
+            if (remaining !== null && remaining <= RENEWAL_WINDOW_DAYS) {
                 return {
-                    tone: 'warning',
-                    badge: 'Renews soon',
-                    action: 'Manage plan',
+                    tone: remaining <= 7 ? 'danger' : 'warning',
+                    badge:
+                        remaining <= 7
+                            ? `Ends in ${plural(remaining)}`
+                            : 'Renews soon',
+                    action: 'Renew plan',
                     note: `Renews in ${plural(remaining)}.`,
                     countdown: true,
                 };

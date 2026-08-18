@@ -22,7 +22,7 @@ class EnsureSubscriptionIsActive
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('settings.subscription.show', 'suspended', 'logout', 'profile.*')) {
+        if ($request->routeIs('settings.subscription.show', 'suspended', 'plan.expired', 'subscription.renew', 'logout', 'profile.*')) {
             return $next($request);
         }
 
@@ -69,7 +69,9 @@ class EnsureSubscriptionIsActive
             return redirect()->route('suspended');
         }
 
-        return redirect()->route('settings.subscription.show')
-            ->with('status', 'subscription-locked');
+        // An expired plan is an invoice, not an accusation: its own page,
+        // with the plans and a renew button, and no offer of another free
+        // trial.
+        return redirect()->route('plan.expired');
     }
 }

@@ -52,7 +52,17 @@ class Business extends Model
      */
     public function isBlockedByPlatform(): bool
     {
-        return in_array($this->status, [self::STATUS_SUSPENDED, self::STATUS_EXPIRED], true);
+        // Suspension only. `expired` was included here at first and that
+        // was wrong: expiry is a billing outcome the customer can fix by
+        // paying, suspension is a decision BiasharaMax made about the
+        // account and paying will not lift it.
+        //
+        // Conflating them told a customer whose plan had simply run out
+        // that their account had been suspended — an accusation rather
+        // than an invoice — and pointed them at support instead of at the
+        // renew button. Two states that both mean "no access" still need
+        // to mean different things to the person reading the page.
+        return $this->status === self::STATUS_SUSPENDED;
     }
 
     protected $fillable = [

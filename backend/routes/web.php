@@ -134,6 +134,23 @@ Route::middleware('auth')
     ->get('/suspended', App\Domain\Business\Http\Controllers\SuspendedBusinessController::class)
     ->name('suspended');
 
+/*
+ * The expired-plan screen and its renew action. Outside the
+ * `subscription.active` group for the same reason as `/suspended`: this is
+ * where that gate sends people, so gating it would loop.
+ *
+ * Separate from `/suspended` because an expired plan and a suspended
+ * account are different messages. One offers a renew button; the other
+ * must not, because paying does not lift a suspension.
+ */
+Route::middleware('auth')->group(function () {
+    Route::get('/plan-expired', [App\Domain\Subscription\Http\Controllers\PlanRenewalController::class, 'show'])
+        ->name('plan.expired');
+
+    Route::post('/plan-expired/renew/{plan}', [App\Domain\Subscription\Http\Controllers\PlanRenewalController::class, 'renew'])
+        ->name('subscription.renew');
+});
+
 Route::middleware(['auth', 'verified', 'subscription.active'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 

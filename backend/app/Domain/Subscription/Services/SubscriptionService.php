@@ -67,6 +67,38 @@ class SubscriptionService
     }
 
     /**
+     * A returning customer choosing a plan after theirs ran out.
+     *
+     * Reuses the existing subscription row rather than creating a second
+     * one, so the business keeps a single subscription history instead of
+     * accumulating a row per lapse — which would make "when did they last
+     * pay" a question about ordering rather than a lookup.
+     *
+     * Never grants a trial. That is the whole point of a separate method:
+     * `startTrial()` is reachable only from registration, so no renewal
+     * path can hand out another 30 free days by reusing it.
+     */
+    public function beginRenewal(Business $business, SubscriptionPlan $plan): Subscription
+    {
+        $subscription = $business->subscription;
+
+        if ($subscription === null) {
+            return $this->startPendingPayment($business, $plan);
+        }
+
+        $subscription->forceFill([
+            'subscription_plan_id' => $plan->getKey(),
+            'status' => Subscription::STATUS_PENDING_PAYMENT,
+            // Cleared so a stale grace window from the previous term
+            // cannot let the account back in before the renewal is paid.
+            'grace_period_ends_at' => null,
+            'trial_ends_at' => null,
+        ])->save();
+
+        return $subscription;
+    }
+
+    /**
      * Turn a paid-for plan on, once payment is confirmed.
      *
      * The term is measured from now rather than from signup, and its
