@@ -99,6 +99,12 @@ class SubscriptionCheckoutService
                 // Shown on Snippe's checkout page so the customer can see
                 // what they are paying for before choosing a network.
                 'plan_name' => $plan->name,
+                // Card payments need a billing address. Taken from the
+                // business where it exists so the customer is not asked to
+                // retype what they already gave us.
+                'address' => $business->address,
+                'city' => $business->city,
+                'country' => $business->country,
                 'description' => 'BiasharaMax — '.$plan->name,
                 'redirect_url' => route('plan.expired'),
                 'cancel_url' => route('plan.expired'),

@@ -145,6 +145,24 @@ class SnippeDriver extends AbstractGatewayDriver
             // somewhere to come back to.
             $payload['details']['redirect_url'] = $meta['redirect_url'] ?? url('/');
             $payload['details']['cancel_url'] = $meta['cancel_url'] ?? url('/');
+
+            // Card requires a billing address. Mobile money does not, and
+            // omitting these produced "customer.address is required;
+            // customer.city is required; …" — five separate messages that
+            // read as a broken integration rather than a missing address.
+            //
+            // Defaulted rather than demanded from the customer. A card
+            // processor wants an address on file; a Zanzibar shop paying by
+            // Visa should not be made to type a postcode that does not
+            // exist there to renew a subscription. The business's own
+            // address is used when we have one.
+            $payload['customer'] += [
+                'address' => $this->firstFilled($meta['address'] ?? null, 'N/A'),
+                'city' => $this->firstFilled($meta['city'] ?? null, 'Dar es Salaam'),
+                'state' => $this->firstFilled($meta['state'] ?? null, 'DSM'),
+                'postcode' => $this->firstFilled($meta['postcode'] ?? null, '00000'),
+                'country' => $this->firstFilled($meta['country'] ?? null, 'TZ'),
+            ];
         }
 
         return $payload;
@@ -181,6 +199,13 @@ class SnippeDriver extends AbstractGatewayDriver
             'successful' => false,
             'raw' => ['message' => 'Refunds must be issued from the Snippe dashboard.'],
         ];
+    }
+
+    private function firstFilled(?string $value, string $fallback): string
+    {
+        $value = trim((string) $value);
+
+        return $value !== '' ? $value : $fallback;
     }
 
     /**
