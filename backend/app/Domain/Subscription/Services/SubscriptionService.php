@@ -354,13 +354,46 @@ class SubscriptionService
             return;
         }
 
-        $status = match (true) {
-            $subscription->status === Subscription::STATUS_TRIALING => Business::STATUS_TRIAL,
-            $subscription->status === Subscription::STATUS_ACTIVE => Business::STATUS_ACTIVE,
-            in_array($subscription->status, [Subscription::STATUS_SUSPENDED, Subscription::STATUS_CANCELED], true) => Business::STATUS_SUSPENDED,
-            $subscription->status === Subscription::STATUS_EXPIRED => Business::STATUS_EXPIRED,
-            default => Business::STATUS_ACTIVE,
+        // `businesses.status` must never be set to `suspended` from here.
+        //
+        // Suspension means BiasharaMax made a decision about this account.
+        // Every status this method can see is a *billing* outcome the
+        // customer can fix by paying — so writing `suspended` for a
+        // cancelled or lapsed subscription puts a word in the column that
+        // did not happen, and every reader downstream believes it.
+        //
+        // That is exactly what went wrong: a cancelled subscription marked
+        // the business suspended, the access gate read `suspended`, and the
+        // owner was shown "This account is temporarily suspended" with a
+        // support number instead of a renew button. The gate was right; the
+        // data it was given was a lie told two layers earlier.
+        //
+        // A suspended subscription is left alone rather than mapped: it is
+        // set by an admin acting on the subscription, and the business
+        // status that goes with it is theirs to set too.
+        $status = match ($subscription->status) {
+            Subscription::STATUS_TRIALING => Business::STATUS_TRIAL,
+            Subscription::STATUS_ACTIVE => Business::STATUS_ACTIVE,
+            Subscription::STATUS_EXPIRED,
+            Subscription::STATUS_CANCELED,
+            Subscription::STATUS_PENDING_PAYMENT => Business::STATUS_EXPIRED,
+            default => null,
         };
+
+        // Nothing to say about this subscription state — leave the column
+        // as it is rather than guessing `active`, which is how a suspended
+        // business used to quietly un-suspend itself the next time any
+        // subscription write touched it.
+        if ($status === null) {
+            return;
+        }
+
+        // A platform suspension outranks any billing state. Without this,
+        // renewing or expiring a suspended business's subscription would
+        // overwrite the suspension and hand access back.
+        if ($business->status === Business::STATUS_SUSPENDED) {
+            return;
+        }
 
         $business->forceFill(['status' => $status])->save();
     }

@@ -184,4 +184,48 @@ class PlanExpiryAndRenewalTest extends TestCase
 
         Notification::assertNothingSent();
     }
+
+    /**
+     * The mapping that caused the wrong page to show.
+     *
+     * `syncBusinessStatus()` wrote `suspended` for a cancelled
+     * subscription. Cancelling is a billing outcome; suspension is a
+     * decision about the account. Once that word was in the column, every
+     * reader downstream believed it — the access gate was working
+     * correctly on data that was already wrong.
+     */
+    public function test_a_cancelled_subscription_does_not_mark_the_business_suspended(): void
+    {
+        [, $business] = $this->createOwnerWithBusiness();
+
+        app(\App\Domain\Subscription\Services\SubscriptionService::class)
+            ->cancel($business->subscription);
+
+        $this->assertNotSame(
+            Business::STATUS_SUSPENDED,
+            $business->fresh()->status,
+            'Cancelling a subscription branded the business as suspended.',
+        );
+    }
+
+    /**
+     * A platform suspension outranks billing. Without this, expiring or
+     * renewing a suspended business would overwrite the suspension and
+     * quietly hand access back.
+     */
+    public function test_billing_changes_cannot_lift_a_platform_suspension(): void
+    {
+        [$owner, $business] = $this->createOwnerWithBusiness();
+
+        $business->update(['status' => Business::STATUS_SUSPENDED]);
+
+        app(\App\Domain\Subscription\Services\SubscriptionService::class)
+            ->expire($business->subscription);
+
+        $this->assertSame(Business::STATUS_SUSPENDED, $business->fresh()->status);
+
+        $this->actingAs($owner)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('suspended'));
+    }
 }
