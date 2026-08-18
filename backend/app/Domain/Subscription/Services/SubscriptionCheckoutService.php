@@ -50,17 +50,14 @@ class SubscriptionCheckoutService
             ];
         }
 
+        // Pre-filled if we have it, but no longer required. The hosted
+        // checkout collects the number and the network itself, so a
+        // missing or wrong phone on file is no longer a dead end — which
+        // is what it was when the driver pushed USSD to one number and a
+        // placeholder value produced "unsupported mobile carrier".
         $phone = $phone
             ?: $business->phone
             ?: $business->owner?->phone;
-
-        if (blank($phone)) {
-            return [
-                'ok' => false,
-                'checkout_url' => null,
-                'message' => 'Add a phone number to your business profile before paying by mobile money.',
-            ];
-        }
 
         $transaction = PaymentTransaction::query()->create([
             'business_id' => $business->getKey(),
@@ -93,6 +90,10 @@ class SubscriptionCheckoutService
                 // lost.
                 'initiated_by_user_id' => $business->owner?->getKey(),
                 'plan_id' => $plan->getKey(),
+                // Shown on Snippe's checkout page so the customer can see
+                // what they are paying for before choosing a network.
+                'plan_name' => $plan->name,
+                'description' => 'BiasharaMax — '.$plan->name,
                 'redirect_url' => route('plan.expired'),
                 'cancel_url' => route('plan.expired'),
             ],
@@ -139,13 +140,11 @@ class SubscriptionCheckoutService
 
         return [
             'ok' => true,
-            // Null for mobile money: the customer approves a USSD prompt on
-            // the handset instead of visiting a page. A null here is a
-            // normal outcome, not a failure.
+            // Always present now: a session without a checkout URL is
+            // treated as a failure by the driver, so reaching here means
+            // there is somewhere to send the customer.
             'checkout_url' => $result['checkout_url'] ?? null,
-            'message' => $result['checkout_url'] ?? null
-                ? null
-                : 'Check your phone and approve the payment prompt. Access returns as soon as it clears.',
+            'message' => null,
         ];
     }
 }
