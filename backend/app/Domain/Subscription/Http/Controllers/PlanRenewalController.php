@@ -45,6 +45,13 @@ class PlanRenewalController extends Controller
 
         return Inertia::render('PlanExpired', [
             'businessName' => $business->name,
+            'status' => session('status'),
+            // Named so the page can say which plan is waiting rather than
+            // just that something is. "6 Months selected, payment not yet
+            // received" answers the question the customer actually has.
+            'pendingPlanName' => $subscription?->status === \App\Domain\Subscription\Models\Subscription::STATUS_PENDING_PAYMENT
+                ? $subscription->plan?->name
+                : null,
             'expiredOn' => $subscription?->current_period_end?->format('j F Y')
                 ?? $subscription?->trial_ends_at?->format('j F Y'),
             'plans' => SubscriptionPlan::query()

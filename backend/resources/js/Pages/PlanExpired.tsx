@@ -25,12 +25,24 @@ export default function PlanExpired({
     businessName,
     plans,
     expiredOn,
+    status,
+    pendingPlanName,
 }: {
     businessName?: string | null;
     plans: SubscriptionPlan[];
     expiredOn?: string | null;
+    status?: string | null;
+    /** Set when a renewal has been chosen and is waiting on payment. */
+    pendingPlanName?: string | null;
 }) {
     const { processing } = useForm({});
+
+    // Without this the page was identical before and after clicking Renew:
+    // the request succeeded, the subscription moved to `pending_payment`,
+    // and the screen redrew looking exactly the same. From the customer's
+    // side that is indistinguishable from a broken button, and the natural
+    // next move is to click it again.
+    const awaitingPayment = status === 'renewal-started' || !!pendingPlanName;
 
     return (
         <>
@@ -72,6 +84,22 @@ export default function PlanExpired({
                             below to pick up exactly where you left off — your
                             data is untouched.
                         </p>
+
+                        {awaitingPayment && (
+                            <div className="mx-auto mt-6 max-w-xl rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-left dark:border-amber-500/40 dark:bg-amber-500/10">
+                                <p className="font-semibold text-amber-900 dark:text-amber-200">
+                                    {pendingPlanName
+                                        ? `${pendingPlanName} selected — payment not yet received`
+                                        : 'Payment not yet received'}
+                                </p>
+                                <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                                    Online payment is not switched on yet.
+                                    Contact us to pay and we will restore access
+                                    as soon as it clears — your choice of plan
+                                    has been recorded.
+                                </p>
+                            </div>
+                        )}
 
                         <div className="mt-8 grid gap-4 sm:grid-cols-3">
                             {(plans ?? []).map((plan) => (
