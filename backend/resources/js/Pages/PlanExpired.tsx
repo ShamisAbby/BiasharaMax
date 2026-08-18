@@ -27,6 +27,7 @@ export default function PlanExpired({
     expiredOn,
     status,
     pendingPlanName,
+    checkoutMessage,
 }: {
     businessName?: string | null;
     plans: SubscriptionPlan[];
@@ -34,6 +35,15 @@ export default function PlanExpired({
     status?: string | null;
     /** Set when a renewal has been chosen and is waiting on payment. */
     pendingPlanName?: string | null;
+    /**
+     * What the payment gateway actually said.
+     *
+     * Replaces a hardcoded "online payment is not switched on yet", which
+     * kept saying exactly that after Snippe had been switched on — the page
+     * asserting something about the system that the system had stopped
+     * agreeing with.
+     */
+    checkoutMessage?: string | null;
 }) {
     const { processing } = useForm({});
 
@@ -42,7 +52,11 @@ export default function PlanExpired({
     // and the screen redrew looking exactly the same. From the customer's
     // side that is indistinguishable from a broken button, and the natural
     // next move is to click it again.
-    const awaitingPayment = status === 'renewal-started' || !!pendingPlanName;
+    const awaitingPayment =
+        status === 'renewal-started' ||
+        status === 'payment-pending' ||
+        status === 'payment-failed' ||
+        !!pendingPlanName;
 
     return (
         <>
@@ -93,10 +107,8 @@ export default function PlanExpired({
                                         : 'Payment not yet received'}
                                 </p>
                                 <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
-                                    Online payment is not switched on yet.
-                                    Contact us to pay and we will restore access
-                                    as soon as it clears — your choice of plan
-                                    has been recorded.
+                                    {checkoutMessage ??
+                                        'Your choice of plan has been recorded. Access returns as soon as payment clears.'}
                                 </p>
                             </div>
                         )}

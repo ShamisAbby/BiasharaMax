@@ -3,6 +3,7 @@
 namespace App\Domain\Subscription\Http\Controllers;
 
 use App\Domain\Subscription\Models\SubscriptionPlan;
+use App\Domain\Subscription\Services\SubscriptionCheckoutService;
 use App\Domain\Subscription\Services\SubscriptionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -22,6 +23,7 @@ class PlanRenewalController extends Controller
 {
     public function __construct(
         private readonly SubscriptionService $subscriptions,
+        private readonly SubscriptionCheckoutService $checkout,
     ) {}
 
     public function show(Request $request): Response|HttpResponse
@@ -46,6 +48,11 @@ class PlanRenewalController extends Controller
         return Inertia::render('PlanExpired', [
             'businessName' => $business->name,
             'status' => session('status'),
+            // Whatever the gateway actually said. The page used to state
+            // "online payment is not switched on yet" unconditionally,
+            // which stayed on screen after Snippe was switched on — an
+            // interface contradicting the system it describes.
+            'checkoutMessage' => session('checkout_message'),
             // Named so the page can say which plan is waiting rather than
             // just that something is. "6 Months selected, payment not yet
             // received" answers the question the customer actually has.
@@ -82,12 +89,19 @@ class PlanRenewalController extends Controller
             return redirect()->route('suspended');
         }
 
-        $this->subscriptions->beginRenewal($business, $plan);
+        $subscription = $this->subscriptions->beginRenewal($business, $plan);
 
-        // Checkout lands here once the Snippe session exists. Until then
-        // the renewal sits as an unpaid record, which is the honest state:
-        // the customer has asked to renew and has not yet paid.
+        $result = $this->checkout->start($business, $plan, $subscription, $request->input('phone'));
+
+        // A hosted page exists only for card payments. Mobile money sends a
+        // USSD prompt to the handset instead, so there is nowhere to send
+        // the browser — it stays here and waits for the webhook.
+        if ($result['ok'] && $result['checkout_url'] !== null) {
+            return redirect()->away($result['checkout_url']);
+        }
+
         return redirect()->route('plan.expired')
-            ->with('status', 'renewal-started');
+            ->with('status', $result['ok'] ? 'payment-pending' : 'payment-failed')
+            ->with('checkout_message', $result['message']);
     }
 }
