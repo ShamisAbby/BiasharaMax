@@ -350,7 +350,17 @@ class SubscriptionService
         };
     }
 
-    private function syncBusinessStatus(Subscription $subscription): void
+    /**
+     * Public because the platform admin edits a subscription directly.
+     *
+     * `businesses.status` is derived from the subscription, so anything
+     * that writes one has to run this or the two drift apart — which they
+     * did: the admin's "Edit plan" dialog set the subscription to active
+     * and left the business on `expired`, and the businesses table renders
+     * the business column. Setting a plan to active changed nothing
+     * visible, and re-setting it changed nothing again.
+     */
+    public function syncBusinessStatus(Subscription $subscription): void
     {
         $business = $subscription->business;
 

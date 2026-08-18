@@ -16,10 +16,18 @@ interface BusinessSummary {
     id: string;
     name: string;
     business_type: string;
+    /** The business column, which is derived from the subscription. */
     status: 'trial' | 'active' | 'suspended' | 'expired';
     owner: { id: string; name: string; email: string } | null;
     subscription: {
         id: string;
+        /**
+         * The subscription's own state. Shown beside the business badge
+         * because the two can legitimately differ — a business inside its
+         * grace window is `active` while the subscription is `expired` —
+         * and showing only one hid the fact that the Edit plan dialog
+         * writes this one.
+         */
         status: string;
         subscription_plan_id: string;
         plan_name: string | null;
@@ -179,9 +187,26 @@ export default function PlatformBusinessesIndex({
             key: 'status',
             label: 'Status',
             render: (business) => (
-                <BiBadge variant={STATUS_VARIANT[business.status]}>
-                    {business.status}
-                </BiBadge>
+                <div className="flex flex-col items-start gap-1">
+                    <BiBadge variant={STATUS_VARIANT[business.status]}>
+                        {business.status}
+                    </BiBadge>
+                    {/*
+                        Both states, because they are different facts and
+                        the difference is exactly what confused this screen:
+                        "Edit plan" writes the subscription, the badge above
+                        renders the business, and a business inside its
+                        grace window is legitimately `active` while its
+                        subscription reads `expired`. Showing one and
+                        editing the other made the form look broken.
+                    */}
+                    {business.subscription?.status &&
+                        business.subscription.status !== business.status && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                plan: {business.subscription.status}
+                            </span>
+                        )}
+                </div>
             ),
         },
         {
