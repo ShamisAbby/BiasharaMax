@@ -123,9 +123,39 @@ class PaymentGateway extends Model
      * least one credential set — a freshly-registered, unconfigured
      * gateway must never silently pretend to process money.
      */
+    /**
+     * Does this gateway have the credentials it needs?
+     *
+     * Deliberately says nothing about whether it is switched on. Those are
+     * two separate facts and combining them created a deadlock that made
+     * every gateway impossible to enable:
+     *
+     *   - the admin refuses to enable a gateway that is not configured
+     *   - `isConfigured()` required `is_enabled` to be true
+     *
+     * So a freshly configured gateway reported "Not configured" no matter
+     * how many times its keys were saved, and the only fix appeared to be
+     * the thing that was already blocked. Nobody could enable Stripe,
+     * Snippe or any of the other ten.
+     *
+     * Both readings of the word were defensible in isolation, which is
+     * what made it survive: the admin meant "has keys", the driver meant
+     * "ready to take money". They are now separate methods.
+     */
     public function isConfigured(): bool
     {
-        return $this->is_enabled && filled($this->credentials);
+        return filled($this->credentials);
+    }
+
+    /**
+     * Configured AND switched on — the only state in which money moves.
+     *
+     * This is what the drivers check. A disabled gateway must never take a
+     * charge, however complete its credentials are.
+     */
+    public function isUsable(): bool
+    {
+        return $this->is_enabled && $this->isConfigured();
     }
 
     /**

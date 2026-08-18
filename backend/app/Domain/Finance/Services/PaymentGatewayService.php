@@ -84,7 +84,9 @@ class PaymentGatewayService
      */
     public function ensureConfigured(PaymentGateway $gateway): void
     {
-        if (! $gateway->isConfigured()) {
+        // `isUsable`, not `isConfigured`: a gateway with perfect keys that
+        // an operator has switched off must not take a charge.
+        if (! $gateway->isUsable()) {
             throw GatewayNotConfiguredException::forGateway($gateway);
         }
     }

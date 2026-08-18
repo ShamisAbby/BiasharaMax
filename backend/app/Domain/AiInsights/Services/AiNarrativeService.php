@@ -47,7 +47,7 @@ class AiNarrativeService
             return 'No AI integration is enabled. Enable one under Integrations to generate narrative summaries.';
         }
 
-        if (! $integration->isConfigured()) {
+        if (! $integration->isUsable()) {
             return "The \"{$integration->name}\" integration is enabled but has no credentials saved. Add them under Configure.";
         }
 

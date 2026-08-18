@@ -14,7 +14,7 @@ abstract class AbstractGatewayDriver implements PaymentGatewayDriver
 
     protected function ensureConfigured(): void
     {
-        if (! $this->gateway->isConfigured()) {
+        if (! $this->gateway->isUsable()) {
             throw GatewayNotConfiguredException::forGateway($this->gateway);
         }
     }

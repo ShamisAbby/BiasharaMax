@@ -111,8 +111,21 @@ class Integration extends Model
         return $this->belongsTo(PlatformUser::class, 'created_by');
     }
 
+    /**
+     * Has credentials. Says nothing about being switched on — see the long
+     * note on PaymentGateway::isConfigured(); this model had the identical
+     * deadlock, where the admin would not let you enable an integration
+     * until it was configured and it could not be configured until it was
+     * enabled.
+     */
     public function isConfigured(): bool
     {
-        return $this->is_enabled && filled($this->credentials);
+        return filled($this->credentials);
+    }
+
+    /** Configured AND switched on — what the drivers require. */
+    public function isUsable(): bool
+    {
+        return $this->is_enabled && $this->isConfigured();
     }
 }

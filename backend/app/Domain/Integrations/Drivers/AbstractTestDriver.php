@@ -12,7 +12,7 @@ abstract class AbstractTestDriver implements IntegrationTestDriver
 
     protected function ensureConfigured(): void
     {
-        if (! $this->integration->isConfigured()) {
+        if (! $this->integration->isUsable()) {
             throw IntegrationNotConfiguredException::forIntegration($this->integration);
         }
     }
