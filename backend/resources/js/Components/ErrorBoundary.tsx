@@ -67,7 +67,7 @@ export default class ErrorBoundary extends Component<
     };
 
     render(): ReactNode {
-        const { error } = this.state;
+        const { error, componentStack } = this.state;
 
         if (!error) {
             return this.props.children;
@@ -101,6 +101,34 @@ export default class ErrorBoundary extends Component<
                     <pre className="mt-4 max-h-40 overflow-auto rounded-lg bg-gray-100 p-3 text-left text-xs leading-relaxed text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                         {error.message || 'No error message was provided.'}
                     </pre>
+
+                    {/*
+                      The component stack, on screen rather than only in the
+                      clipboard.
+                      "Cannot read properties of undefined" names a property
+                      and nothing else — not the file, not the component. On
+                      its own it is almost unactionable: three separate
+                      attempts were made to find one such crash by reading
+                      the source, and each guessed a different wrong place.
+                      The stack was captured the whole time and shown
+                      nowhere.
+                      The copy button is not enough on its own. It depends
+                      on navigator.clipboard, which is unavailable over
+                      plain HTTP and can be refused by permissions policy —
+                      so the one path to the useful information could fail
+                      silently, on exactly the screen where something has
+                      already gone wrong.
+                    */}
+                    {componentStack && (
+                        <details className="mt-2 text-left">
+                            <summary className="cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                Where it happened
+                            </summary>
+                            <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-gray-100 p-3 text-xs leading-relaxed text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                {componentStack.trim()}
+                            </pre>
+                        </details>
+                    )}
 
                     <div className="mt-6 flex items-center justify-center gap-2">
                         <button
