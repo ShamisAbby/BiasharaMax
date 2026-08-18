@@ -162,6 +162,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/plan-expired', [App\Domain\Subscription\Http\Controllers\PlanRenewalController::class, 'show'])
         ->name('plan.expired');
 
+    // Choose how to pay. Ours, not Snippe's — their hosted page cannot
+    // offer a card.
+    Route::get('/plan-expired/pay/{plan}', [App\Domain\Subscription\Http\Controllers\PlanRenewalController::class, 'checkout'])
+        ->name('subscription.checkout');
+
     Route::post('/plan-expired/renew/{plan}', [App\Domain\Subscription\Http\Controllers\PlanRenewalController::class, 'renew'])
         ->name('subscription.renew');
 

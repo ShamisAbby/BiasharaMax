@@ -219,14 +219,21 @@ export default function PlanExpired({
                                         access
                                     </p>
 
+                                    {/*
+                                        Goes to the checkout page rather
+                                        than charging on click. Picking a
+                                        plan and choosing how to pay are
+                                        two decisions, and firing a real
+                                        payment from a card button gave the
+                                        customer no chance to make the
+                                        second one.
+                                    */}
                                     <Link
-                                        href={route('subscription.renew', {
+                                        href={route('subscription.checkout', {
                                             plan: plan.id,
                                         })}
-                                        method="post"
-                                        as="button"
                                         disabled={processing}
-                                        className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
+                                        className="mt-4 block w-full rounded-lg bg-indigo-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
                                     >
                                         Renew for {plan.duration_months} months
                                     </Link>

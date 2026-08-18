@@ -8,14 +8,16 @@ use Illuminate\Support\Facades\Http;
 /**
  * Snippe — mobile money and cards for Tanzania.
  *
- * Payments run through Snippe's hosted checkout (Payment Sessions), so the
- * customer chooses their own network — M-Pesa, Airtel Money, Mixx by Yas,
- * Halotel — on a Snippe-branded page and is returned here afterwards.
+ * Two methods, two shapes, one endpoint:
  *
- * An earlier version posted directly to `/v1/payments`, which pushes a USSD
- * prompt to a single number and never navigates the browser anywhere. That
- * shape works, but it left a paying customer staring at an unchanged screen
- * with no way to tell success from failure.
+ *  - **Mobile money** sends a USSD prompt to the customer's phone. Nothing
+ *    to redirect to, so the page they came from has to wait and poll.
+ *  - **Card** returns a `payment_url` to redirect the browser to.
+ *
+ * Snippe's hosted Payment Sessions API was tried and abandoned: its
+ * `allowed_methods` accepts only `mobile_money`, so it cannot offer a card
+ * at all. Method choice therefore belongs on a BiasharaMax page, which is
+ * where it now lives.
  *
  * Two behaviours below exist only because they were hit for real:
  *
@@ -53,32 +55,45 @@ class SnippeDriver extends AbstractGatewayDriver
      * request. Set that profile to BiasharaMax, or customers will see
      * whatever the account default is.
      */
+    /**
+     * Start a payment by whichever method the customer chose.
+     *
+     * Snippe exposes the two through different endpoints, and this is the
+     * constraint that shapes the whole checkout:
+     *
+     *  - **Mobile money** — `/v1/payments` with `payment_type: mobile`.
+     *    Sends a USSD prompt to the number given. No page, no redirect.
+     *  - **Card** — `/v1/payments` with `payment_type: card`. Returns a
+     *    `payment_url` to redirect the browser to.
+     *
+     * The hosted Payment Sessions API was tried first and abandoned: its
+     * `allowed_methods` accepts only `mobile_money`, so a session can never
+     * offer a card. Choosing the method has to happen on our own page.
+     */
     public function charge(PaymentTransaction $transaction): array
     {
         $this->ensureConfigured();
 
-        $payload = $this->buildSessionPayload($transaction);
+        $payload = $this->buildPaymentPayload($transaction);
 
-        $result = $this->post('/api/v1/sessions', $payload, $transaction->reference_number);
+        // Idempotency-Key makes a retry safe: a network timeout followed by
+        // a second attempt returns the original response rather than
+        // charging twice.
+        $result = $this->post('/v1/payments', $payload, $transaction->reference_number);
 
         $body = $result['decoded'];
+        $successful = is_array($body) && $this->succeeded($body);
         $data = is_array($body) ? ($body['data'] ?? []) : [];
-        $checkoutUrl = $this->checkoutUrl(is_array($data) ? $data : []);
-
-        // A session is only useful if it produced somewhere to send the
-        // customer. A 201 with no `checkout_url` is a failure however
-        // cheerful the status code, so success is judged on the URL rather
-        // than on the response code alone.
-        $successful = $checkoutUrl !== null;
 
         $this->log('charge', $payload, is_array($body) ? $body : [], $successful, $result['status'], transaction: $transaction);
 
         return [
             'successful' => $successful,
-            // The session reference, which `verify()` reads back and the
-            // webhook echoes as `session_reference`.
             'external_id' => $data['reference'] ?? null,
-            'checkout_url' => $checkoutUrl,
+            // Present for card, absent for mobile money. A null here is a
+            // normal outcome for a USSD push, not a failure — the caller
+            // decides what to do with each.
+            'checkout_url' => $this->checkoutUrl(is_array($data) ? $data : []),
             'raw' => is_array($body) ? $body : [],
         ];
     }
@@ -86,62 +101,61 @@ class SnippeDriver extends AbstractGatewayDriver
     /**
      * @return array<string, mixed>
      */
-    private function buildSessionPayload(PaymentTransaction $transaction): array
+    private function buildPaymentPayload(PaymentTransaction $transaction): array
     {
         $meta = $transaction->metadata ?? [];
+        $type = ($meta['payment_type'] ?? 'mobile') === 'card' ? 'card' : 'mobile';
+        $amount = (int) round((float) $transaction->amount);
+        $currency = strtoupper((string) $transaction->currency);
+        $phone = $this->normalisePhone((string) ($meta['phone'] ?? ''));
 
-        $name = trim(($meta['first_name'] ?? '').' '.($meta['last_name'] ?? ''));
-
-        return [
-            // Whole units. Snippe's minimum is 500 TZS.
-            'amount' => (int) round((float) $transaction->amount),
-            'currency' => strtoupper((string) $transaction->currency),
-            'allowed_methods' => ['mobile_money'],
-            'customer' => array_filter([
-                'name' => $name !== '' ? $name : null,
-                'phone' => $this->normalisePhone((string) ($meta['phone'] ?? '')) ?: null,
-                'email' => $meta['email'] ?? null,
-            ]),
-            // Where Snippe sends the browser once the customer is done.
-            'redirect_url' => $meta['redirect_url'] ?? url('/'),
-            'webhook_url' => route('webhooks.snippe'),
-            'description' => $meta['description'] ?? 'BiasharaMax subscription',
-            // Shown on the checkout page so the customer can see what they
-            // are paying for before they choose a network.
-            'line_items' => [[
-                'name' => $meta['plan_name'] ?? 'BiasharaMax subscription',
-                'quantity' => 1,
-                'unit_price' => (int) round((float) $transaction->amount),
-            ]],
-            'display' => [
-                'show_line_items' => true,
-                'show_description' => true,
-                'button_text' => 'Pay now',
+        $payload = [
+            'payment_type' => $type,
+            'reference' => $transaction->reference_number,
+            'currency' => $currency,
+            // Whole units. TZS has no subunit in practice and Snippe
+            // rejects decimals here.
+            'amount' => $amount,
+            'phone' => $phone,
+            'phone_number' => preg_replace('/\D+/', '', $phone) ?? '',
+            'details' => [
+                'amount' => $amount,
+                'currency' => $currency,
             ],
+            'callback_url' => $meta['redirect_url'] ?? url('/'),
+            'webhook_url' => route('webhooks.snippe'),
             'metadata' => array_merge(
-                // Scalars only: Snippe rejects nested values and caps
-                // metadata at 50 keys.
+                // Scalars only — a nested value here is rejected for the
+                // whole request.
                 array_filter($meta, fn ($value) => is_scalar($value)),
                 [
                     'reference' => $transaction->reference_number,
                     'transaction_id' => (string) $transaction->getKey(),
                 ],
             ),
-            // An hour. Long enough for someone to find their phone, short
-            // enough that an abandoned session does not sit open all week.
-            'expires_in' => 3600,
+            'customer' => array_filter([
+                'firstname' => $meta['first_name'] ?? null,
+                'lastname' => $meta['last_name'] ?? null,
+                'email' => $meta['email'] ?? null,
+            ]),
         ];
+
+        if ($type === 'card') {
+            // Only the card flow leaves the site, so only it needs
+            // somewhere to come back to.
+            $payload['details']['redirect_url'] = $meta['redirect_url'] ?? url('/');
+            $payload['details']['cancel_url'] = $meta['cancel_url'] ?? url('/');
+        }
+
+        return $payload;
     }
 
     public function verify(string $externalTransactionId): array
     {
         $this->ensureConfigured();
 
-        // Sessions, matching `charge()`. Asking the payments endpoint for
-        // a session reference returns 404, which would read as "not paid"
-        // and quietly strand a customer who had paid.
         $response = Http::withHeaders($this->headers())
-            ->get(self::BASE_URL.'/api/v1/sessions/'.$externalTransactionId);
+            ->get(self::BASE_URL.'/v1/payments/'.$externalTransactionId);
 
         $body = $response->json() ?? [];
         $status = strtolower((string) (data_get($body, 'data.status') ?? ''));

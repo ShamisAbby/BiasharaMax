@@ -33,7 +33,13 @@ class SubscriptionCheckoutService
     /**
      * @return array{ok: bool, checkout_url: ?string, message: ?string}
      */
-    public function start(Business $business, SubscriptionPlan $plan, Subscription $subscription, ?string $phone = null): array
+    public function start(
+        Business $business,
+        SubscriptionPlan $plan,
+        Subscription $subscription,
+        ?string $phone = null,
+        string $method = 'mobile',
+    ): array
     {
         $gateway = PaymentGateway::query()
             ->where('provider', PaymentGateway::PROVIDER_SNIPPE)
@@ -72,12 +78,12 @@ class SubscriptionCheckoutService
             'amount' => $plan->price ?? $plan->price_monthly,
             'currency' => 'TZS',
             'status' => PaymentTransaction::STATUS_PENDING,
-            'payment_method' => 'mobile_money',
+            'payment_method' => $method === 'card' ? 'card' : 'mobile_money',
             // Everything the driver needs, and everything the webhook needs
             // to find its way back to this subscription without a lookup by
             // amount or timing.
             'metadata' => [
-                'payment_type' => 'mobile',
+                'payment_type' => $method === 'card' ? 'card' : 'mobile',
                 'phone' => $phone,
                 'email' => $business->owner?->email,
                 'first_name' => Str::before((string) $business->owner?->name, ' '),
@@ -140,11 +146,13 @@ class SubscriptionCheckoutService
 
         return [
             'ok' => true,
-            // Always present now: a session without a checkout URL is
-            // treated as a failure by the driver, so reaching here means
-            // there is somewhere to send the customer.
+            // Card returns a URL to redirect to. Mobile money does not —
+            // the customer approves a prompt on the handset — so a null
+            // here is a normal outcome for that method, not a failure.
             'checkout_url' => $result['checkout_url'] ?? null,
-            'message' => null,
+            'message' => ($result['checkout_url'] ?? null) === null
+                ? 'Check your phone and enter your PIN to approve the payment.'
+                : null,
         ];
     }
 }

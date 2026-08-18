@@ -71,6 +71,37 @@ class PlanRenewalController extends Controller
         ]);
     }
 
+    /**
+     * The BiasharaMax checkout — where the customer picks how to pay.
+     *
+     * Ours rather than Snippe's, because Snippe's hosted page cannot offer
+     * a card: its `allowed_methods` accepts only `mobile_money`. Choosing
+     * here and dispatching to the right Snippe endpoint is the only way to
+     * give customers both.
+     */
+    public function checkout(Request $request, SubscriptionPlan $plan): Response|HttpResponse
+    {
+        $business = $request->user()?->business;
+
+        abort_if($business === null, 403);
+        abort_unless($plan->is_active, 404);
+
+        if ($business->isBlockedByPlatform()) {
+            return redirect()->route('suspended');
+        }
+
+        return Inertia::render('PlanCheckout', [
+            'plan' => [
+                'id' => $plan->getKey(),
+                'name' => $plan->name,
+                'price' => $plan->price ?? $plan->price_monthly,
+                'duration_months' => $plan->duration_months,
+            ],
+            'businessName' => $business->name,
+            'phone' => $business->phone ?? $business->owner?->phone,
+        ]);
+    }
+
     public function show(Request $request): Response|HttpResponse
     {
         $business = $request->user()?->business;
@@ -134,9 +165,21 @@ class PlanRenewalController extends Controller
             return redirect()->route('suspended');
         }
 
+        // Method and phone come from the BiasharaMax checkout page. A
+        // renewal reached without them — an old bookmark, a resubmitted
+        // form — sends the customer to choose rather than guessing on
+        // their behalf and charging the wrong way.
+        $method = $request->input('method') === 'card' ? 'card' : 'mobile';
+        $phone = trim((string) $request->input('phone'));
+
+        if ($method === 'mobile' && $phone === '') {
+            return redirect()->route('subscription.checkout', $plan)
+                ->withErrors(['phone' => 'Enter the mobile money number to charge.']);
+        }
+
         $subscription = $this->subscriptions->beginRenewal($business, $plan);
 
-        $result = $this->checkout->start($business, $plan, $subscription, $request->input('phone'));
+        $result = $this->checkout->start($business, $plan, $subscription, $phone ?: null, $method);
 
         // A hosted page exists only for card payments. Mobile money sends a
         // USSD prompt to the handset instead, so there is nowhere to send

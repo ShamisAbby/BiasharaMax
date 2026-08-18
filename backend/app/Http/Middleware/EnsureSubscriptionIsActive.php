@@ -22,7 +22,7 @@ class EnsureSubscriptionIsActive
 
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->routeIs('settings.subscription.show', 'suspended', 'plan.expired', 'subscription.renew', 'subscription.payment-status', 'logout', 'profile.*')) {
+        if ($request->routeIs('settings.subscription.show', 'suspended', 'plan.expired', 'subscription.renew', 'subscription.checkout', 'subscription.payment-status', 'logout', 'profile.*')) {
             return $next($request);
         }
 
